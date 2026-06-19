@@ -22,136 +22,85 @@ quản lý nhập – xuất – chuyển kho, và đặc biệt áp dụng nguy
 
 ---
 
-## 2. Schema cơ sở dữ liệu (7 bảng)
+## 2. Schema database (7 bảng — thiết kế gốc)
 
-> Tất cả bảng dùng PostgreSQL trên Supabase. Khóa chính mặc định `id bigint generated
-> always as identity` (hoặc `uuid` cho bảng cần). Mọi bảng có `created_at timestamptz
-> default now()` và `updated_at timestamptz default now()`.
+### Products
+- `product_id` (PK)
+- `name`
+- `sku` (UNIQUE)
+- `unit_of_measure`
 
-### 2.1. `Products` — Sản phẩm
+### Partners
+- `partner_id` (PK)
+- `name`
+- `type` (ENUM: `'SUPPLIER'`, `'CUSTOMER'`)
 
-| Field          | Type           | Ghi chú                              |
-| -------------- | -------------- | ------------------------------------ |
-| id             | bigint (PK)    | Khóa chính                           |
-| sku            | text (unique)  | Mã sản phẩm                          |
-| name           | text           | Tên sản phẩm                         |
-| description    | text           | Mô tả                                |
-| unit           | text           | Đơn vị tính (cái, hộp, kg…)          |
-| barcode        | text           | Mã vạch                              |
-| min_stock      | numeric        | Mức tồn tối thiểu (cảnh báo)         |
-| is_active      | boolean        | Còn kinh doanh hay không             |
-| created_at     | timestamptz    |                                      |
-| updated_at     | timestamptz    |                                      |
+### Locations
+- `location_id` (PK)
+- `warehouse_name`
+- `address`
 
-### 2.2. `Partners` — Đối tác (NCC / Khách hàng)
+### Batches
+- `batch_id` (PK)
+- `product_id` (FK → `Products`)
+- `partner_id` (FK → `Partners`) — lưu Supplier giao lô này
+- `lot_number`
+- `expiry_date`
+- `received_date`
+- `initial_quantity`
+- `unit_cost`
 
-| Field          | Type           | Ghi chú                              |
-| -------------- | -------------- | ------------------------------------ |
-| id             | bigint (PK)    | Khóa chính                           |
-| code           | text (unique)  | Mã đối tác                           |
-| name           | text           | Tên đối tác                          |
-| type           | text           | `supplier` \| `customer` \| `both`   |
-| phone          | text           | Số điện thoại                        |
-| email          | text           | Email                                |
-| address        | text           | Địa chỉ                              |
-| is_active      | boolean        | Trạng thái                           |
-| created_at     | timestamptz    |                                      |
-| updated_at     | timestamptz    |                                      |
+### InventoryStockLevel
+- `stock_id` (PK)
+- `batch_id` (FK → `Batches`)
+- `location_id` (FK → `Locations`)
+- `current_quantity`
 
-### 2.3. `Locations` — Vị trí lưu kho
+### Transactions
+- `transaction_id` (PK)
+- `partner_id` (FK → `Partners`)
+- `transaction_type` (`IN` / `OUT` / `TRANSFER`)
+- `reference_doc`
+- `transaction_date`
 
-| Field          | Type           | Ghi chú                              |
-| -------------- | -------------- | ------------------------------------ |
-| id             | bigint (PK)    | Khóa chính                           |
-| code           | text (unique)  | Mã vị trí (VD: A-01-02)              |
-| name           | text           | Tên vị trí / khu vực                 |
-| type           | text           | `warehouse` \| `zone` \| `shelf`     |
-| parent_id      | bigint (FK)    | → `Locations.id` (cây phân cấp)      |
-| is_active      | boolean        | Trạng thái                           |
-| created_at     | timestamptz    |                                      |
-| updated_at     | timestamptz    |                                      |
-
-### 2.4. `Batches` — Lô hàng (cốt lõi cho FEFO)
-
-| Field          | Type           | Ghi chú                                  |
-| -------------- | -------------- | ---------------------------------------- |
-| id             | bigint (PK)    | Khóa chính                               |
-| batch_no       | text           | Số lô                                     |
-| product_id     | bigint (FK)    | → `Products.id`                          |
-| manufacture_date | date         | Ngày sản xuất                            |
-| expiry_date    | date           | **Hạn sử dụng — khóa cho logic FEFO**    |
-| received_date  | date           | Ngày nhập kho                            |
-| supplier_id    | bigint (FK)    | → `Partners.id` (đối tác cung cấp)       |
-| cost_price     | numeric        | Giá vốn lô                               |
-| created_at     | timestamptz    |                                          |
-| updated_at     | timestamptz    |                                          |
-
-> Ràng buộc gợi ý: `unique(product_id, batch_no)`; index trên `(product_id,
-> expiry_date)` để truy vấn FEFO nhanh.
-
-### 2.5. `InventoryStockLevel` — Mức tồn theo lô & vị trí
-
-| Field          | Type           | Ghi chú                                  |
-| -------------- | -------------- | ---------------------------------------- |
-| id             | bigint (PK)    | Khóa chính                               |
-| product_id     | bigint (FK)    | → `Products.id`                          |
-| batch_id       | bigint (FK)    | → `Batches.id`                           |
-| location_id    | bigint (FK)    | → `Locations.id`                         |
-| quantity       | numeric        | Số lượng tồn hiện tại                     |
-| reserved_qty   | numeric        | Số lượng đã giữ chỗ (chưa xuất)          |
-| updated_at     | timestamptz    |                                          |
-
-> Ràng buộc gợi ý: `unique(product_id, batch_id, location_id)`. Đây là bảng
-> "số dư" — luôn được cập nhật khi có Transaction được xác nhận.
-
-### 2.6. `Transactions` — Phiếu giao dịch (header)
-
-| Field          | Type           | Ghi chú                                          |
-| -------------- | -------------- | ------------------------------------------------ |
-| id             | bigint (PK)    | Khóa chính                                       |
-| code           | text (unique)  | Mã phiếu                                          |
-| type           | text           | `inbound` \| `outbound` \| `transfer` \| `adjust`|
-| partner_id     | bigint (FK)    | → `Partners.id` (NCC hoặc khách)                 |
-| status         | text           | `draft` \| `confirmed` \| `cancelled`            |
-| transaction_date | timestamptz  | Ngày giao dịch                                   |
-| note           | text           | Ghi chú                                          |
-| created_by     | uuid (FK)      | → `auth.users.id` (Supabase Auth)                |
-| created_at     | timestamptz    |                                                  |
-| updated_at     | timestamptz    |                                                  |
-
-### 2.7. `TransactionDetails` — Chi tiết giao dịch (line items)
-
-| Field           | Type           | Ghi chú                                          |
-| --------------- | -------------- | ------------------------------------------------ |
-| id              | bigint (PK)    | Khóa chính                                       |
-| transaction_id  | bigint (FK)    | → `Transactions.id` (on delete cascade)          |
-| product_id      | bigint (FK)    | → `Products.id`                                  |
-| batch_id        | bigint (FK)    | → `Batches.id`                                   |
-| from_location_id| bigint (FK)    | → `Locations.id` (xuất / chuyển từ)              |
-| to_location_id  | bigint (FK)    | → `Locations.id` (nhập / chuyển đến)             |
-| quantity        | numeric        | Số lượng                                          |
-| unit_price      | numeric        | Đơn giá                                            |
-| created_at      | timestamptz    |                                                  |
+### TransactionDetails
+- `detail_id` (PK)
+- `transaction_id` (FK → `Transactions`)
+- `batch_id` (FK → `Batches`)
+- `location_from` (FK → `Locations`, NULL nếu là giao dịch IN)
+- `location_to` (FK → `Locations`, NULL nếu là giao dịch OUT)
+- `quantity_moved`
+- `unit_cost`
+- `total_amount`
 
 ### Sơ đồ quan hệ FK
 
 ```
 Products  1───* Batches               (Batches.product_id)
-Partners  1───* Batches               (Batches.supplier_id)
+Partners  1───* Batches               (Batches.partner_id — Supplier giao lô)
 Partners  1───* Transactions          (Transactions.partner_id)
-Locations 1───* Locations             (Locations.parent_id, tự tham chiếu)
 
-Products  1───* InventoryStockLevel   (InventoryStockLevel.product_id)
 Batches   1───* InventoryStockLevel   (InventoryStockLevel.batch_id)
 Locations 1───* InventoryStockLevel   (InventoryStockLevel.location_id)
 
 Transactions 1───* TransactionDetails (TransactionDetails.transaction_id)
-Products     1───* TransactionDetails (TransactionDetails.product_id)
 Batches      1───* TransactionDetails (TransactionDetails.batch_id)
-Locations    1───* TransactionDetails (from_location_id / to_location_id)
-
-auth.users   1───* Transactions       (Transactions.created_by)
+Locations    1───* TransactionDetails (location_from / location_to)
 ```
+
+---
+
+## 2b. Quy tắc xuất hàng (`exit_reason_code`)
+
+Mọi giao dịch xuất (`transaction_type = 'OUT'`) phải mang một mã lý do xuất. Tất cả
+đều tuân theo nguyên tắc **FEFO** (ưu tiên lô có `expiry_date` sớm nhất).
+
+| Mã           | Ý nghĩa                          | FEFO | Partner       |
+| ------------ | -------------------------------- | ---- | ------------- |
+| `PROCESSING` | Xuất chế biến / bếp              | ✅   | NULL          |
+| `SALE`       | Xuất bán thương mại              | ✅   | = khách hàng  |
+| `STAFF`      | Sử dụng nội bộ                   | ✅   | NULL          |
+| `WASTE`      | Hủy hàng hỏng / hết hạn          | ✅   | NULL          |
 
 ---
 
