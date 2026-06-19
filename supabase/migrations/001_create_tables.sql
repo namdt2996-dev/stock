@@ -1,9 +1,9 @@
 -- Migration: 001_create_tables
 -- Tạo 6 bảng còn lại cho hệ thống quản lý tồn kho.
--- Bảng Products đã được tạo trước trên Supabase => BỎ QUA.
+-- Bảng products đã được tạo trước trên Supabase => BỎ QUA.
 -- Thứ tự tạo theo phụ thuộc FK:
---   Partners -> Locations -> Batches -> InventoryStockLevel
---   -> Transactions -> TransactionDetails
+--   partners -> locations -> batches -> inventory_stock_level
+--   -> transactions -> transaction_details
 -- Lưu ý: KHÔNG bật RLS trong file này (bật qua Supabase Dashboard).
 
 -- =====================================================================
@@ -14,31 +14,31 @@ CREATE TYPE transaction_type AS ENUM ('IN', 'OUT', 'TRANSFER');
 CREATE TYPE exit_reason_code AS ENUM ('PROCESSING', 'SALE', 'STAFF', 'WASTE');
 
 -- =====================================================================
--- 1. Partners
+-- 1. partners
 -- =====================================================================
-CREATE TABLE Partners (
+CREATE TABLE partners (
     partner_id  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     name        text NOT NULL,
     type        partner_type NOT NULL
 );
 
 -- =====================================================================
--- 2. Locations
+-- 2. locations
 -- =====================================================================
-CREATE TABLE Locations (
+CREATE TABLE locations (
     location_id     uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     warehouse_name  text NOT NULL,
     address         text
 );
 
 -- =====================================================================
--- 3. Batches
---    product_id -> Products (đã tạo sẵn), partner_id -> Partners (Supplier)
+-- 3. batches
+--    product_id -> products (đã tạo sẵn), partner_id -> partners (Supplier)
 -- =====================================================================
-CREATE TABLE Batches (
+CREATE TABLE batches (
     batch_id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    product_id        uuid NOT NULL REFERENCES Products (product_id),
-    partner_id        uuid REFERENCES Partners (partner_id),
+    product_id        uuid NOT NULL REFERENCES products (product_id),
+    partner_id        uuid REFERENCES partners (partner_id),
     lot_number        text,
     expiry_date       date,
     received_date     date,
@@ -47,22 +47,22 @@ CREATE TABLE Batches (
 );
 
 -- =====================================================================
--- 4. InventoryStockLevel
+-- 4. inventory_stock_level
 -- =====================================================================
-CREATE TABLE InventoryStockLevel (
+CREATE TABLE inventory_stock_level (
     stock_id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    batch_id          uuid NOT NULL REFERENCES Batches (batch_id),
-    location_id       uuid NOT NULL REFERENCES Locations (location_id),
+    batch_id          uuid NOT NULL REFERENCES batches (batch_id),
+    location_id       uuid NOT NULL REFERENCES locations (location_id),
     current_quantity  numeric NOT NULL DEFAULT 0
 );
 
 -- =====================================================================
--- 5. Transactions
+-- 5. transactions
 --    CHECK: transaction_type = 'OUT' => exit_reason_code IS NOT NULL
 -- =====================================================================
-CREATE TABLE Transactions (
+CREATE TABLE transactions (
     transaction_id    uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    partner_id        uuid REFERENCES Partners (partner_id),
+    partner_id        uuid REFERENCES partners (partner_id),
     transaction_type  transaction_type NOT NULL,
     exit_reason_code  exit_reason_code,
     reference_doc     text,
@@ -72,15 +72,15 @@ CREATE TABLE Transactions (
 );
 
 -- =====================================================================
--- 6. TransactionDetails
+-- 6. transaction_details
 --    location_from / location_to cho phép NULL
 -- =====================================================================
-CREATE TABLE TransactionDetails (
+CREATE TABLE transaction_details (
     detail_id       uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    transaction_id  uuid NOT NULL REFERENCES Transactions (transaction_id) ON DELETE CASCADE,
-    batch_id        uuid NOT NULL REFERENCES Batches (batch_id),
-    location_from   uuid REFERENCES Locations (location_id),
-    location_to     uuid REFERENCES Locations (location_id),
+    transaction_id  uuid NOT NULL REFERENCES transactions (transaction_id) ON DELETE CASCADE,
+    batch_id        uuid NOT NULL REFERENCES batches (batch_id),
+    location_from   uuid REFERENCES locations (location_id),
+    location_to     uuid REFERENCES locations (location_id),
     quantity_moved  numeric NOT NULL,
     unit_cost       numeric,
     total_amount    numeric
