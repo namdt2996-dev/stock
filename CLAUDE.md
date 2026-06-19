@@ -109,12 +109,10 @@ Mọi giao dịch xuất (`transaction_type = 'OUT'`) phải mang một mã lý 
 
 ## 3. Lộ trình 5 giai đoạn
 
-### ☐ Giai đoạn 1 — Khởi tạo & Schema
-- [ ] Khởi tạo project Vite + React + Tailwind
-- [ ] Tạo project Supabase, cấu hình biến môi trường
-- [ ] Viết & test SQL tạo 7 bảng + ràng buộc FK
-- [ ] Thiết lập RLS cơ bản cho các bảng
-- [ ] Cấu hình deploy Vercel (preview)
+### Giai đoạn 1 — Dựng nền
+- [x] Giai đoạn 1A: Database — 7 bảng đã tạo trên Supabase ✓
+- [ ] Giai đoạn 1B: Khởi tạo React project
+- [ ] Giai đoạn 1C: Kết nối React ↔ Supabase
 
 ### ☐ Giai đoạn 2 — Danh mục (Master Data)
 - [ ] CRUD `Products`
@@ -156,3 +154,10 @@ Mọi giao dịch xuất (`transaction_type = 'OUT'`) phải mang một mã lý 
 3. **FEFO là ưu tiên cao nhất.** Mọi logic xuất kho mặc định tuân theo nguyên tắc
    First Expired, First Out — ưu tiên lô có `expiry_date` sớm nhất. Bất kỳ ngoại lệ
    nào cũng phải được nêu rõ và xác nhận trước khi triển khai.
+
+---
+
+## Ghi chú triển khai
+- Tên bảng dùng lowercase + underscore (snake_case)
+- Bảng products tạo riêng, 6 bảng còn lại qua migration `001_create_tables.sql`
+- RLS đã bật trên tất cả 7 bảng
