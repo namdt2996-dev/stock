@@ -60,6 +60,9 @@ quản lý nhập – xuất – chuyển kho, và đặc biệt áp dụng nguy
 - `transaction_id` (PK)
 - `partner_id` (FK → `Partners`)
 - `transaction_type` (`IN` / `OUT` / `TRANSFER`)
+- `exit_reason_code` (ENUM: `'PROCESSING'`, `'SALE'`, `'STAFF'`, `'WASTE'`)
+  - NULL nếu `transaction_type` là `IN` hoặc `TRANSFER`
+  - Bắt buộc có giá trị nếu `transaction_type` là `OUT`
 - `reference_doc`
 - `transaction_date`
 
