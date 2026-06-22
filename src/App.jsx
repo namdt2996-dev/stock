@@ -3,6 +3,7 @@ import { supabase } from './lib/supabase'
 import Login from './pages/Login'
 import MasterData from './pages/MasterData'
 import InboundReceipt from './pages/InboundReceipt'
+import StockLevel from './pages/StockLevel'
 
 function App() {
   const [session, setSession] = useState(null)
@@ -43,6 +44,7 @@ function App() {
         <nav className="flex items-center gap-4">
           {navLink('masterData', 'Master Data')}
           {navLink('inbound', 'Nhập kho')}
+          {navLink('stock', 'Tồn kho')}
         </nav>
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-600">Xin chào {session.user.email}</span>
@@ -59,6 +61,7 @@ function App() {
       <main>
         {page === 'masterData' && <MasterData />}
         {page === 'inbound' && <InboundReceipt />}
+        {page === 'stock' && <StockLevel />}
       </main>
     </div>
   )
