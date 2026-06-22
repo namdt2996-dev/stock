@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
 import Login from './pages/Login'
 import MasterData from './pages/MasterData'
+import InboundReceipt from './pages/InboundReceipt'
 
 function App() {
   const [session, setSession] = useState(null)
@@ -57,11 +58,7 @@ function App() {
 
       <main>
         {page === 'masterData' && <MasterData />}
-        {page === 'inbound' && (
-          <div className="max-w-3xl mx-auto p-6 text-gray-500">
-            Trang Nhập kho — đang phát triển.
-          </div>
-        )}
+        {page === 'inbound' && <InboundReceipt />}
       </main>
     </div>
   )
