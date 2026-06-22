@@ -11,12 +11,13 @@ function daysUntil(dateStr) {
   return Math.round((expiry - today) / (1000 * 60 * 60 * 24))
 }
 
-// 'red' nếu ≤ 7 ngày, 'yellow' nếu ≤ 30 ngày, ngược lại null
+// Ưu tiên: đỏ ≤ 7 ngày, cam ≤ 45 ngày, vàng ≤ 90 ngày, ngược lại null
 function expiryLevel(dateStr) {
   const d = daysUntil(dateStr)
   if (d === null) return null
   if (d <= 7) return 'red'
-  if (d <= 30) return 'yellow'
+  if (d <= 45) return 'orange'
+  if (d <= 90) return 'yellow'
   return null
 }
 
@@ -43,6 +44,9 @@ function StockLevel() {
   }, [])
 
   const redCount = rows.filter((r) => expiryLevel(r.expiry_date) === 'red').length
+  const orangeCount = rows.filter(
+    (r) => expiryLevel(r.expiry_date) === 'orange'
+  ).length
   const yellowCount = rows.filter(
     (r) => expiryLevel(r.expiry_date) === 'yellow'
   ).length
@@ -67,9 +71,13 @@ function StockLevel() {
           <span className="w-3 h-3 rounded-sm bg-red-400 inline-block" />
           {redCount} lô sắp/đã hết hạn (≤ 7 ngày)
         </span>
+        <span className="inline-flex items-center gap-2 bg-orange-50 text-orange-800 border border-orange-200 px-3 py-1 rounded">
+          <span className="w-3 h-3 rounded-sm bg-orange-400 inline-block" />
+          {orangeCount} lô cảnh báo (≤ 45 ngày)
+        </span>
         <span className="inline-flex items-center gap-2 bg-yellow-50 text-yellow-800 border border-yellow-200 px-3 py-1 rounded">
           <span className="w-3 h-3 rounded-sm bg-yellow-300 inline-block" />
-          {yellowCount} lô cần chú ý (≤ 30 ngày)
+          {yellowCount} lô cần chú ý (≤ 90 ngày)
         </span>
       </div>
 
@@ -102,9 +110,11 @@ function StockLevel() {
                 const rowClass =
                   level === 'red'
                     ? 'bg-red-50'
-                    : level === 'yellow'
-                      ? 'bg-yellow-50'
-                      : ''
+                    : level === 'orange'
+                      ? 'bg-orange-50'
+                      : level === 'yellow'
+                        ? 'bg-yellow-50'
+                        : ''
                 return (
                   <tr key={i} className={`border-t border-gray-100 ${rowClass}`}>
                     <td className="px-3 py-2 text-gray-800">{r.product_name}</td>
