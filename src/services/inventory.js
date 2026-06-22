@@ -23,7 +23,7 @@ export async function createInboundReceipt(header, lines) {
     p_partner_id: header.partner_id,
     p_location_id: header.location_id,
     p_reference_doc: header.reference_doc || null,
-    p_lines: JSON.stringify(lines),
+    p_lines: lines,
   })
   if (error) throw error
   return data
