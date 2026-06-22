@@ -36,6 +36,14 @@ function InboundReceipt() {
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [showToast, setShowToast] = useState(false)
+
+  // Tự ẩn toast sau 15 giây
+  useEffect(() => {
+    if (!showToast) return
+    const timer = setTimeout(() => setShowToast(false), 15000)
+    return () => clearTimeout(timer)
+  }, [showToast])
 
   useEffect(() => {
     async function loadRefs() {
@@ -111,6 +119,7 @@ function InboundReceipt() {
     try {
       const transaction_id = await createInboundReceipt(header, cleanLines)
       setSuccess(`Đã lưu phiếu nhập thành công (mã: ${transaction_id}).`)
+      setShowToast(true)
       resetForm()
     } catch (e) {
       setError(e.message)
@@ -120,6 +129,13 @@ function InboundReceipt() {
 
   return (
     <div className="max-w-5xl mx-auto p-6">
+      {/* TOAST thành công — góc trên phải, tự ẩn sau 15s */}
+      {showToast && (
+        <div className="fixed top-4 right-4 z-50 bg-green-600 text-white text-sm font-medium px-4 py-3 rounded shadow-lg">
+          ✓ Phiếu nhập kho đã được lưu thành công!
+        </div>
+      )}
+
       <h2 className="text-xl font-bold text-gray-800 mb-4">Phiếu nhập kho</h2>
 
       {/* HEADER */}
