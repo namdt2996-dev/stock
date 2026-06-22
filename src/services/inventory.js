@@ -30,6 +30,33 @@ export async function createInboundReceipt(header, lines) {
 }
 
 /**
+ * Tạo phiếu xuất kho (outbound receipt) — ATOMIC qua Postgres function (RPC).
+ *
+ * header: { transaction_date, partner_id, exit_reason_code, reference_doc }
+ * lines:  [{ product_id, quantity }]
+ *
+ * Việc chọn LÔ để xuất do phía DB tự quyết theo FEFO (hạn dùng gần nhất xuất
+ * trước) trong function create_outbound_receipt — client KHÔNG chọn lô.
+ *
+ * Trả về transaction_id (UUID) của phiếu vừa tạo.
+ */
+export async function createOutboundReceipt(header, lines) {
+  if (!lines || lines.length === 0) {
+    throw new Error('Phiếu xuất phải có ít nhất 1 dòng sản phẩm.')
+  }
+
+  const { data, error } = await supabase.rpc('create_outbound_receipt', {
+    p_transaction_date: header.transaction_date,
+    p_partner_id: header.partner_id || null,
+    p_exit_reason_code: header.exit_reason_code,
+    p_reference_doc: header.reference_doc || null,
+    p_lines: lines,
+  })
+  if (error) throw error
+  return data
+}
+
+/**
  * Lấy danh sách tồn kho hiện tại — JOIN inventory_stock_level với batches,
  * products và locations.
  *
