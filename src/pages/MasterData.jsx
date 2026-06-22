@@ -1,0 +1,290 @@
+import { useEffect, useState } from 'react'
+import {
+  getProducts,
+  createProduct,
+  getPartners,
+  createPartner,
+  getLocations,
+  createLocation,
+} from '../services/masterData'
+
+const TABS = [
+  { key: 'products', label: 'Sản phẩm' },
+  { key: 'partners', label: 'Đối tác' },
+  { key: 'locations', label: 'Kho' },
+]
+
+function MasterData() {
+  const [tab, setTab] = useState('products')
+
+  return (
+    <div className="max-w-3xl mx-auto p-6">
+      <h2 className="text-xl font-bold text-gray-800 mb-4">Master Data</h2>
+
+      <div className="flex gap-2 border-b border-gray-200 mb-4">
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 ${
+              tab === t.key
+                ? 'border-green-600 text-green-700'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'products' && <ProductsTab />}
+      {tab === 'partners' && <PartnersTab />}
+      {tab === 'locations' && <LocationsTab />}
+    </div>
+  )
+}
+
+// ---------- shared UI ----------
+function Table({ columns, rows }) {
+  return (
+    <table className="w-full text-sm border border-gray-200">
+      <thead className="bg-gray-50">
+        <tr>
+          {columns.map((c) => (
+            <th key={c.key} className="text-left px-3 py-2 font-medium text-gray-600">
+              {c.label}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.length === 0 ? (
+          <tr>
+            <td colSpan={columns.length} className="px-3 py-3 text-center text-gray-400">
+              Chưa có dữ liệu
+            </td>
+          </tr>
+        ) : (
+          rows.map((r) => (
+            <tr key={r.product_id || r.partner_id || r.location_id} className="border-t border-gray-100">
+              {columns.map((c) => (
+                <td key={c.key} className="px-3 py-2 text-gray-700">
+                  {r[c.key]}
+                </td>
+              ))}
+            </tr>
+          ))
+        )}
+      </tbody>
+    </table>
+  )
+}
+
+const inputClass =
+  'border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-500'
+const btnClass =
+  'bg-green-600 text-white text-sm font-medium px-4 py-1.5 rounded hover:bg-green-700 disabled:opacity-50'
+
+// ---------- Products ----------
+function ProductsTab() {
+  const [rows, setRows] = useState([])
+  const [form, setForm] = useState({ name: '', sku: '', unit_of_measure: '' })
+  const [error, setError] = useState(null)
+  const [saving, setSaving] = useState(false)
+
+  async function load() {
+    try {
+      setRows(await getProducts())
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+  useEffect(() => {
+    load()
+  }, [])
+
+  async function handleAdd(e) {
+    e.preventDefault()
+    setError(null)
+    setSaving(true)
+    try {
+      await createProduct(form)
+      setForm({ name: '', sku: '', unit_of_measure: '' })
+      await load()
+    } catch (e) {
+      setError(e.message)
+    }
+    setSaving(false)
+  }
+
+  return (
+    <div className="space-y-4">
+      <Table
+        columns={[
+          { key: 'name', label: 'Tên' },
+          { key: 'sku', label: 'SKU' },
+          { key: 'unit_of_measure', label: 'ĐVT' },
+        ]}
+        rows={rows}
+      />
+      <form onSubmit={handleAdd} className="flex flex-wrap gap-2 items-end">
+        <input
+          className={inputClass}
+          placeholder="Tên sản phẩm"
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          required
+        />
+        <input
+          className={inputClass}
+          placeholder="SKU"
+          value={form.sku}
+          onChange={(e) => setForm({ ...form, sku: e.target.value })}
+          required
+        />
+        <input
+          className={inputClass}
+          placeholder="Đơn vị tính"
+          value={form.unit_of_measure}
+          onChange={(e) => setForm({ ...form, unit_of_measure: e.target.value })}
+        />
+        <button className={btnClass} disabled={saving}>
+          {saving ? 'Đang lưu…' : 'Thêm'}
+        </button>
+      </form>
+      {error && <p className="text-red-600 text-sm">{error}</p>}
+    </div>
+  )
+}
+
+// ---------- Partners ----------
+function PartnersTab() {
+  const [rows, setRows] = useState([])
+  const [form, setForm] = useState({ name: '', type: 'SUPPLIER' })
+  const [error, setError] = useState(null)
+  const [saving, setSaving] = useState(false)
+
+  async function load() {
+    try {
+      setRows(await getPartners())
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+  useEffect(() => {
+    load()
+  }, [])
+
+  async function handleAdd(e) {
+    e.preventDefault()
+    setError(null)
+    setSaving(true)
+    try {
+      await createPartner(form)
+      setForm({ name: '', type: 'SUPPLIER' })
+      await load()
+    } catch (e) {
+      setError(e.message)
+    }
+    setSaving(false)
+  }
+
+  return (
+    <div className="space-y-4">
+      <Table
+        columns={[
+          { key: 'name', label: 'Tên' },
+          { key: 'type', label: 'Loại' },
+        ]}
+        rows={rows}
+      />
+      <form onSubmit={handleAdd} className="flex flex-wrap gap-2 items-end">
+        <input
+          className={inputClass}
+          placeholder="Tên đối tác"
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          required
+        />
+        <select
+          className={inputClass}
+          value={form.type}
+          onChange={(e) => setForm({ ...form, type: e.target.value })}
+        >
+          <option value="SUPPLIER">SUPPLIER</option>
+          <option value="CUSTOMER">CUSTOMER</option>
+        </select>
+        <button className={btnClass} disabled={saving}>
+          {saving ? 'Đang lưu…' : 'Thêm'}
+        </button>
+      </form>
+      {error && <p className="text-red-600 text-sm">{error}</p>}
+    </div>
+  )
+}
+
+// ---------- Locations ----------
+function LocationsTab() {
+  const [rows, setRows] = useState([])
+  const [form, setForm] = useState({ warehouse_name: '', address: '' })
+  const [error, setError] = useState(null)
+  const [saving, setSaving] = useState(false)
+
+  async function load() {
+    try {
+      setRows(await getLocations())
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+  useEffect(() => {
+    load()
+  }, [])
+
+  async function handleAdd(e) {
+    e.preventDefault()
+    setError(null)
+    setSaving(true)
+    try {
+      await createLocation(form)
+      setForm({ warehouse_name: '', address: '' })
+      await load()
+    } catch (e) {
+      setError(e.message)
+    }
+    setSaving(false)
+  }
+
+  return (
+    <div className="space-y-4">
+      <Table
+        columns={[
+          { key: 'warehouse_name', label: 'Tên kho' },
+          { key: 'address', label: 'Địa chỉ' },
+        ]}
+        rows={rows}
+      />
+      <form onSubmit={handleAdd} className="flex flex-wrap gap-2 items-end">
+        <input
+          className={inputClass}
+          placeholder="Tên kho"
+          value={form.warehouse_name}
+          onChange={(e) => setForm({ ...form, warehouse_name: e.target.value })}
+          required
+        />
+        <input
+          className={inputClass}
+          placeholder="Địa chỉ"
+          value={form.address}
+          onChange={(e) => setForm({ ...form, address: e.target.value })}
+        />
+        <button className={btnClass} disabled={saving}>
+          {saving ? 'Đang lưu…' : 'Thêm'}
+        </button>
+      </form>
+      {error && <p className="text-red-600 text-sm">{error}</p>}
+    </div>
+  )
+}
+
+export default MasterData
