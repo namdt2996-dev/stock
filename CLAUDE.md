@@ -109,38 +109,13 @@ Mọi giao dịch xuất (`transaction_type = 'OUT'`) phải mang một mã lý 
 
 ## 3. Lộ trình 5 giai đoạn
 
-### Giai đoạn 1 — Dựng nền
 - [x] Giai đoạn 1A: Database — 7 bảng đã tạo trên Supabase ✓
-- [ ] Giai đoạn 1B: Khởi tạo React project
-- [ ] Giai đoạn 1C: Kết nối React ↔ Supabase
-
-### ☐ Giai đoạn 2 — Danh mục (Master Data)
-- [ ] CRUD `Products`
-- [ ] CRUD `Partners`
-- [ ] CRUD `Locations` (hỗ trợ cây phân cấp)
-- [ ] CRUD `Batches`
-- [ ] Tìm kiếm / lọc / phân trang danh mục
-
-### ☐ Giai đoạn 3 — Giao dịch kho
-- [ ] Phiếu nhập kho (inbound) → cập nhật `InventoryStockLevel`
-- [ ] Phiếu xuất kho (outbound)
-- [ ] Phiếu chuyển kho (transfer giữa Locations)
-- [ ] Phiếu điều chỉnh (adjust)
-- [ ] Luồng trạng thái draft → confirmed → cancelled
-
-### ☐ Giai đoạn 4 — Logic FEFO & Tồn kho
-- [ ] Thuật toán gợi ý xuất theo FEFO (expiry_date sớm nhất trước)
-- [ ] Báo cáo tồn kho theo sản phẩm / lô / vị trí
-- [ ] Cảnh báo hàng sắp/đã hết hạn
-- [ ] Cảnh báo tồn dưới `min_stock`
-- [ ] Xử lý `reserved_qty` khi giữ chỗ
-
-### ☐ Giai đoạn 5 — Hoàn thiện & Triển khai
-- [ ] Auth & phân quyền theo vai trò
-- [ ] Dashboard tổng quan
-- [ ] Báo cáo xuất/nhập theo kỳ
-- [ ] Tối ưu hiệu năng & index
-- [ ] Deploy production trên Vercel
+- [x] Giai đoạn 1B: Vite + React + Tailwind khởi tạo thành công ✓
+- [x] Giai đoạn 1C: React kết nối Supabase — fetch products OK ✓
+- [ ] Giai đoạn 2: Auth (đăng nhập / đăng xuất)
+- [ ] Giai đoạn 3: Nhập kho
+- [ ] Giai đoạn 4: Tồn kho + Xuất hàng (FEFO)
+- [ ] Giai đoạn 5: Báo cáo
 
 ---
 
@@ -161,3 +136,6 @@ Mọi giao dịch xuất (`transaction_type = 'OUT'`) phải mang một mã lý 
 - Tên bảng dùng lowercase + underscore (snake_case)
 - Bảng products tạo riêng, 6 bảng còn lại qua migration `001_create_tables.sql`
 - RLS đã bật trên tất cả 7 bảng
+- `.env.local` chứa Supabase keys, không commit (covered by `*.local`)
+- Anon/publishable key được dùng ở client, bảo mật qua RLS policies
+- `src/lib/supabase.js` là entry point kết nối duy nhất
