@@ -114,7 +114,7 @@ Mọi giao dịch xuất (`transaction_type = 'OUT'`) phải mang một mã lý 
 - [x] Giai đoạn 1C: React kết nối Supabase — fetch products OK ✓
 - [x] Giai đoạn 2A: Supabase Auth bật, user test tạo xong ✓
 - [x] Giai đoạn 2B: Login page + session handling hoạt động ✓
-- [ ] Giai đoạn 2C: RLS policies (bảo vệ data theo user)
+- [x] Giai đoạn 2C: RLS policies — authenticated_all trên 7 bảng ✓
 - [ ] Giai đoạn 3: Nhập kho
 - [ ] Giai đoạn 4: Tồn kho + Xuất hàng (FEFO)
 - [ ] Giai đoạn 5: Báo cáo
@@ -141,3 +141,6 @@ Mọi giao dịch xuất (`transaction_type = 'OUT'`) phải mang một mã lý 
 - `.env.local` chứa Supabase keys, không commit (covered by `*.local`)
 - Anon/publishable key được dùng ở client, bảo mật qua RLS policies
 - `src/lib/supabase.js` là entry point kết nối duy nhất
+- RLS policy "authenticated_all" áp dụng cho tất cả 7 bảng
+- Chỉ user đã đăng nhập (authenticated) mới đọc/ghi được
+- Phù hợp hệ thống nội bộ 1-2 người
