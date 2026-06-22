@@ -109,7 +109,7 @@ function InboundReceipt() {
 
     setSaving(true)
     try {
-      const { transaction_id } = await createInboundReceipt(header, cleanLines)
+      const transaction_id = await createInboundReceipt(header, cleanLines)
       setSuccess(`Đã lưu phiếu nhập thành công (mã: ${transaction_id}).`)
       resetForm()
     } catch (e) {
