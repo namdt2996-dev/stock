@@ -112,7 +112,9 @@ Mọi giao dịch xuất (`transaction_type = 'OUT'`) phải mang một mã lý 
 - [x] Giai đoạn 1A: Database — 7 bảng đã tạo trên Supabase ✓
 - [x] Giai đoạn 1B: Vite + React + Tailwind khởi tạo thành công ✓
 - [x] Giai đoạn 1C: React kết nối Supabase — fetch products OK ✓
-- [ ] Giai đoạn 2: Auth (đăng nhập / đăng xuất)
+- [x] Giai đoạn 2A: Supabase Auth bật, user test tạo xong ✓
+- [x] Giai đoạn 2B: Login page + session handling hoạt động ✓
+- [ ] Giai đoạn 2C: RLS policies (bảo vệ data theo user)
 - [ ] Giai đoạn 3: Nhập kho
 - [ ] Giai đoạn 4: Tồn kho + Xuất hàng (FEFO)
 - [ ] Giai đoạn 5: Báo cáo
