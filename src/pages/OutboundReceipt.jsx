@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
-import { getPartners, getProducts } from '../services/masterData'
-import { createOutboundReceipt } from '../services/inventory'
+import { getPartners, getLocations } from '../services/masterData'
+import {
+  createOutboundReceipt,
+  getProductsByLocation,
+} from '../services/inventory'
 
 const today = () => new Date().toISOString().slice(0, 10)
 
@@ -16,6 +19,7 @@ const emptyLine = () => ({ product_id: '', quantity: '' })
 const emptyHeader = () => ({
   transaction_date: today(),
   exit_reason_code: 'PROCESSING',
+  location_id: '',
   partner_id: '',
   reference_doc: '',
 })
@@ -28,6 +32,7 @@ function OutboundReceipt() {
   const [lines, setLines] = useState([emptyLine()])
 
   const [partners, setPartners] = useState([])
+  const [locations, setLocations] = useState([])
   const [products, setProducts] = useState([])
 
   const [error, setError] = useState(null)
@@ -44,9 +49,9 @@ function OutboundReceipt() {
   useEffect(() => {
     async function loadRefs() {
       try {
-        const [pa, pr] = await Promise.all([getPartners(), getProducts()])
+        const [pa, lo] = await Promise.all([getPartners(), getLocations()])
         setPartners(pa)
-        setProducts(pr)
+        setLocations(lo)
       } catch (e) {
         setError(`Lỗi tải dữ liệu danh mục: ${e.message}`)
       }
@@ -55,6 +60,20 @@ function OutboundReceipt() {
   }, [])
 
   const isSale = header.exit_reason_code === 'SALE'
+
+  // Đổi kho: load lại sản phẩm có tồn trong kho đó + reset toàn bộ dòng
+  async function handleLocationChange(location_id) {
+    setHeader((h) => ({ ...h, location_id }))
+    setLines([emptyLine()])
+    setProducts([])
+    setError(null)
+    if (!location_id) return
+    try {
+      setProducts(await getProductsByLocation(location_id))
+    } catch (e) {
+      setError(`Lỗi tải sản phẩm theo kho: ${e.message}`)
+    }
+  }
 
   function updateLine(index, field, value) {
     setLines((prev) =>
@@ -81,6 +100,9 @@ function OutboundReceipt() {
   async function handleSave() {
     setError(null)
 
+    if (!header.location_id) {
+      return setError('Vui lòng chọn kho xuất.')
+    }
     if (isSale && !header.partner_id) {
       return setError('Lý do "Xuất bán" yêu cầu chọn đối tác (khách hàng).')
     }
@@ -154,6 +176,22 @@ function OutboundReceipt() {
         </label>
 
         <label className="flex flex-col text-sm text-gray-600">
+          Kho xuất <span className="text-red-500">*</span>
+          <select
+            className={inputClass}
+            value={header.location_id}
+            onChange={(e) => handleLocationChange(e.target.value)}
+          >
+            <option value="">-- Chọn kho --</option>
+            {locations.map((l) => (
+              <option key={l.location_id} value={l.location_id}>
+                {l.warehouse_name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex flex-col text-sm text-gray-600">
           Đối tác {isSale && <span className="text-red-500">*</span>}
           <select
             className={inputClass}
@@ -204,11 +242,14 @@ function OutboundReceipt() {
               <tr key={i} className="border-t border-gray-100">
                 <td className="px-3 py-2">
                   <select
-                    className={inputClass}
+                    className={`${inputClass} disabled:bg-gray-100 disabled:text-gray-400`}
                     value={line.product_id}
+                    disabled={!header.location_id}
                     onChange={(e) => updateLine(i, 'product_id', e.target.value)}
                   >
-                    <option value="">-- Chọn SP --</option>
+                    <option value="">
+                      {header.location_id ? '-- Chọn SP --' : 'Chọn kho trước'}
+                    </option>
                     {products.map((p) => (
                       <option key={p.product_id} value={p.product_id}>
                         {p.name}

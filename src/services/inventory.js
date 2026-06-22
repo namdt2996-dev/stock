@@ -48,12 +48,50 @@ export async function createOutboundReceipt(header, lines) {
   const { data, error } = await supabase.rpc('create_outbound_receipt', {
     p_transaction_date: header.transaction_date,
     p_partner_id: header.partner_id || null,
+    p_location_id: header.location_id,
     p_exit_reason_code: header.exit_reason_code,
     p_reference_doc: header.reference_doc || null,
     p_lines: lines,
   })
   if (error) throw error
   return data
+}
+
+/**
+ * Lấy danh sách sản phẩm CÓ TỒN (> 0) trong một kho cụ thể.
+ * Dùng cho phiếu xuất: chỉ cho chọn sản phẩm thực sự có hàng trong kho đó.
+ *
+ * Trả về mảng { product_id, name, unit_of_measure } (distinct), sort name ASC.
+ */
+export async function getProductsByLocation(location_id) {
+  const { data, error } = await supabase
+    .from('inventory_stock_level')
+    .select(
+      `
+      current_quantity,
+      batches:batch_id (
+        products:product_id ( product_id, name, unit_of_measure )
+      )
+    `
+    )
+    .eq('location_id', location_id)
+    .gt('current_quantity', 0)
+  if (error) throw error
+
+  // Gộp distinct theo product_id
+  const map = new Map()
+  for (const r of data ?? []) {
+    const p = r.batches?.products
+    if (p && !map.has(p.product_id)) {
+      map.set(p.product_id, {
+        product_id: p.product_id,
+        name: p.name,
+        unit_of_measure: p.unit_of_measure,
+      })
+    }
+  }
+
+  return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name))
 }
 
 /**
