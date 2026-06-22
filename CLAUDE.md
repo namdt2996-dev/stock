@@ -115,7 +115,8 @@ Mọi giao dịch xuất (`transaction_type = 'OUT'`) phải mang một mã lý 
 - [x] Giai đoạn 2A: Supabase Auth bật, user test tạo xong ✓
 - [x] Giai đoạn 2B: Login page + session handling hoạt động ✓
 - [x] Giai đoạn 2C: RLS policies — authenticated_all trên 7 bảng ✓
-- [ ] Giai đoạn 3: Nhập kho
+- [x] Giai đoạn 3A: Master Data UI (products, partners, locations) ✓
+- [x] Giai đoạn 3B+3C: Phiếu nhập kho — form nhiều dòng, atomic via Postgres RPC, toast thông báo thành công ✓
 - [ ] Giai đoạn 4: Tồn kho + Xuất hàng (FEFO)
 - [ ] Giai đoạn 5: Báo cáo
 
@@ -144,3 +145,6 @@ Mọi giao dịch xuất (`transaction_type = 'OUT'`) phải mang một mã lý 
 - RLS policy "authenticated_all" áp dụng cho tất cả 7 bảng
 - Chỉ user đã đăng nhập (authenticated) mới đọc/ghi được
 - Phù hợp hệ thống nội bộ 1-2 người
+- Supabase CLI migration naming cần format timestamp (YYYYMMDDHHmmss) — các migration hiện tại dùng prefix 001/002/003, push thủ công qua Dashboard
+- RPC function `create_inbound_receipt`: atomic, SECURITY DEFINER, nhận `p_lines` là JSONB array (không stringify)
+- Supabase RPC tự serialize JSONB — không dùng `JSON.stringify()` khi gọi `.rpc()`
