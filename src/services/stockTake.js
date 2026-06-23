@@ -19,7 +19,7 @@ export async function getStockForTake(location_id) {
       batches:batch_id (
         lot_number, expiry_date, received_date, unit_cost,
         products:product_id (
-          product_id, name, unit_of_measure, pack_unit, conversion_factor
+          product_id, name, sku, unit_of_measure, pack_unit, conversion_factor
         )
       ),
       locations:location_id ( warehouse_name )
@@ -42,6 +42,7 @@ export async function getStockForTake(location_id) {
       unit_cost: b?.unit_cost ?? null,
       product_id: p?.product_id ?? null,
       product_name: p?.name ?? '',
+      sku: p?.sku ?? '',
       unit_of_measure: p?.unit_of_measure ?? '',
       pack_unit: p?.pack_unit ?? null,
       conversion_factor: p?.conversion_factor ?? null,

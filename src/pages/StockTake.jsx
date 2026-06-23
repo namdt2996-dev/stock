@@ -16,6 +16,7 @@ function StockTake() {
   const [locations, setLocations] = useState([])
   const [locationId, setLocationId] = useState('')
   const [date, setDate] = useState(today())
+  const [search, setSearch] = useState('')
 
   const [rows, setRows] = useState([])
   const [entries, setEntries] = useState({}) // stock_id -> { packs, loose }
@@ -48,6 +49,7 @@ function StockTake() {
     try {
       setRows(await getStockForTake(locId))
       setEntries({})
+      setSearch('')
     } catch (e) {
       setError(e.message)
     }
@@ -89,6 +91,46 @@ function StockTake() {
   const matchedCount = computed.filter((c) => c.entered && c.diff === 0).length
   const diffCount = computed.filter((c) => c.entered && c.diff !== 0).length
 
+  // Gom các lô theo sản phẩm (rows đã sort name ASC, expiry ASC)
+  const groupsMap = new Map()
+  for (const c of computed) {
+    const pid = c.row.product_id
+    if (!groupsMap.has(pid)) {
+      groupsMap.set(pid, {
+        product_id: pid,
+        product_name: c.row.product_name,
+        sku: c.row.sku,
+        lots: [],
+      })
+    }
+    groupsMap.get(pid).lots.push(c)
+  }
+  const groups = Array.from(groupsMap.values())
+
+  // Tiến độ: Y = số sản phẩm unique; X = số sản phẩm có ít nhất 1 lô đã nhập
+  const totalProducts = groups.length
+  const checkedProducts = groups.filter((g) =>
+    g.lots.some((c) => c.entered)
+  ).length
+  const progressPct = totalProducts
+    ? Math.round((checkedProducts / totalProducts) * 100)
+    : 0
+  const completed = totalProducts > 0 && checkedProducts === totalProducts
+
+  // Lọc theo search (tên sản phẩm hoặc số lô)
+  const q = search.trim().toLowerCase()
+  const visibleGroups = !q
+    ? groups
+    : groups
+        .map((g) => {
+          if (g.product_name.toLowerCase().includes(q)) return g
+          const lots = g.lots.filter((c) =>
+            (c.row.lot_number || '').toLowerCase().includes(q)
+          )
+          return lots.length ? { ...g, lots } : null
+        })
+        .filter(Boolean)
+
   async function handleSave() {
     setError(null)
     const items = computed
@@ -113,6 +155,49 @@ function StockTake() {
 
   const diffColor = (diff) =>
     diff === 0 ? 'text-green-600' : diff < 0 ? 'text-red-600' : 'text-orange-600'
+
+  function renderActualInput(r, e, entered, actual) {
+    const cf = Number(r.conversion_factor) || 1
+    if (!hasPack(r)) {
+      return (
+        <input
+          type="number"
+          min="0"
+          className={`${inputClass} w-28 text-right`}
+          value={e.loose ?? ''}
+          onChange={(ev) => setEntry(r.stock_id, 'loose', ev.target.value)}
+        />
+      )
+    }
+    return (
+      <div>
+        <div className="flex items-center gap-1">
+          <input
+            type="number"
+            min="0"
+            className={`${inputClass} w-16 text-right`}
+            value={e.packs ?? ''}
+            onChange={(ev) => setEntry(r.stock_id, 'packs', ev.target.value)}
+          />
+          <span className="text-gray-500">{r.pack_unit}</span>
+          <input
+            type="number"
+            min="0"
+            className={`${inputClass} w-16 text-right`}
+            value={e.loose ?? ''}
+            onChange={(ev) => setEntry(r.stock_id, 'loose', ev.target.value)}
+          />
+          <span className="text-gray-500">{r.unit_of_measure}</span>
+        </div>
+        {entered && (
+          <div className="text-xs text-gray-400 mt-0.5">
+            = {fmt(actual)} {r.unit_of_measure}
+            <span className="ml-1">(1 {r.pack_unit} = {cf})</span>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-6xl mx-auto p-6">
@@ -152,6 +237,18 @@ function StockTake() {
             onChange={(e) => setDate(e.target.value)}
           />
         </label>
+
+        <label className="flex flex-col text-sm text-gray-600 flex-1 min-w-[200px]">
+          Tìm kiếm
+          <input
+            type="text"
+            className={inputClass}
+            placeholder="Tìm sản phẩm..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            disabled={!locationId}
+          />
+        </label>
       </div>
 
       {error && <p className="text-red-600 text-sm mb-3">Lỗi: {error}</p>}
@@ -160,11 +257,31 @@ function StockTake() {
         <p className="text-gray-500 text-sm">Chọn kho để bắt đầu kiểm kho.</p>
       ) : (
         <>
+          {/* PROGRESS */}
+          {totalProducts > 0 && (
+            <div className="mb-3">
+              <div
+                className={`text-sm font-medium ${
+                  completed ? 'text-green-700' : 'text-gray-500'
+                }`}
+              >
+                Đã kiểm {checkedProducts} / {totalProducts} danh mục sản phẩm
+              </div>
+              <div className="mt-1 h-1.5 w-full bg-gray-200 rounded overflow-hidden">
+                <div
+                  className={`h-full rounded ${
+                    completed ? 'bg-green-600' : 'bg-gray-400'
+                  }`}
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+            </div>
+          )}
+
           <div className="bg-white border border-gray-200 rounded overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-600">
                 <tr>
-                  <th className="text-left px-3 py-2">Sản phẩm</th>
                   <th className="text-left px-3 py-2">Số lô</th>
                   <th className="text-left px-3 py-2">Hạn dùng</th>
                   <th className="text-left px-3 py-2">ĐVT</th>
@@ -176,79 +293,42 @@ function StockTake() {
               <tbody>
                 {computed.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-3 py-4 text-center text-gray-400">
+                    <td colSpan={6} className="px-3 py-4 text-center text-gray-400">
                       {loading ? 'Đang tải…' : 'Kho này không có tồn'}
                     </td>
                   </tr>
+                ) : visibleGroups.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-3 py-4 text-center text-gray-400">
+                      Không tìm thấy sản phẩm
+                    </td>
+                  </tr>
                 ) : (
-                  computed.map(({ row: r, entered, actual, diff }, idx) => {
-                    const e = entries[r.stock_id] || {}
-                    const cf = Number(r.conversion_factor) || 1
-                    // Hiện tên sản phẩm chỉ ở dòng đầu của nhóm
-                    const firstOfGroup =
-                      idx === 0 ||
-                      computed[idx - 1].row.product_id !== r.product_id
-                    return (
-                      <tr key={r.stock_id} className="border-t border-gray-100">
-                        <td className="px-3 py-2 text-gray-800">
-                          {firstOfGroup ? r.product_name : ''}
-                        </td>
-                        <td className="px-3 py-2 text-gray-600">{r.lot_number}</td>
-                        <td className="px-3 py-2 text-gray-600">{fmtDate(r.expiry_date)}</td>
-                        <td className="px-3 py-2 text-gray-600">{r.unit_of_measure}</td>
-                        <td className="px-3 py-2 text-right text-gray-700">
-                          {fmt(r.system_quantity)}
-                        </td>
-                        <td className="px-3 py-2">
-                          {hasPack(r) ? (
-                            <div>
-                              <div className="flex items-center gap-1">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  className={`${inputClass} w-16 text-right`}
-                                  value={e.packs ?? ''}
-                                  onChange={(ev) =>
-                                    setEntry(r.stock_id, 'packs', ev.target.value)
-                                  }
-                                />
-                                <span className="text-gray-500">{r.pack_unit}</span>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  className={`${inputClass} w-16 text-right`}
-                                  value={e.loose ?? ''}
-                                  onChange={(ev) =>
-                                    setEntry(r.stock_id, 'loose', ev.target.value)
-                                  }
-                                />
-                                <span className="text-gray-500">{r.unit_of_measure}</span>
-                              </div>
-                              {entered && (
-                                <div className="text-xs text-gray-400 mt-0.5">
-                                  = {fmt(actual)} {r.unit_of_measure}
-                                  <span className="ml-1">(1 {r.pack_unit} = {cf})</span>
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <input
-                              type="number"
-                              min="0"
-                              className={`${inputClass} w-28 text-right`}
-                              value={e.loose ?? ''}
-                              onChange={(ev) =>
-                                setEntry(r.stock_id, 'loose', ev.target.value)
-                              }
-                            />
-                          )}
-                        </td>
-                        <td className={`px-3 py-2 text-right font-medium ${entered ? diffColor(diff) : 'text-gray-400'}`}>
-                          {entered ? (diff > 0 ? `+${fmt(diff)}` : fmt(diff)) : '—'}
-                        </td>
-                      </tr>
-                    )
-                  })
+                  visibleGroups.map((g) => (
+                    <Group key={g.product_id} group={g}>
+                      {g.lots.map(({ row: r, entered, actual, diff }) => {
+                        const e = entries[r.stock_id] || {}
+                        return (
+                          <tr key={r.stock_id} className="border-t border-gray-100">
+                            <td className="px-3 py-2 text-gray-600" style={{ paddingLeft: 16 }}>
+                              {r.lot_number}
+                            </td>
+                            <td className="px-3 py-2 text-gray-600">{fmtDate(r.expiry_date)}</td>
+                            <td className="px-3 py-2 text-gray-600">{r.unit_of_measure}</td>
+                            <td className="px-3 py-2 text-right text-gray-700">
+                              {fmt(r.system_quantity)}
+                            </td>
+                            <td className="px-3 py-2">
+                              {renderActualInput(r, e, entered, actual)}
+                            </td>
+                            <td className={`px-3 py-2 text-right font-medium ${entered ? diffColor(diff) : 'text-gray-400'}`}>
+                              {entered ? (diff > 0 ? `+${fmt(diff)}` : fmt(diff)) : '—'}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </Group>
+                  ))
                 )}
               </tbody>
             </table>
@@ -282,6 +362,21 @@ function StockTake() {
         </>
       )}
     </div>
+  )
+}
+
+// Group header + các dòng lô
+function Group({ group, children }) {
+  return (
+    <>
+      <tr style={{ background: 'var(--color-background-secondary, #f3f4f6)' }}>
+        <td colSpan={6} className="px-3 py-1.5 text-xs font-medium text-gray-500">
+          {group.product_name}
+          {group.sku ? ` — ${group.sku}` : ''}
+        </td>
+      </tr>
+      {children}
+    </>
   )
 }
 
