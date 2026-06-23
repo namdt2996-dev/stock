@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { getDashboardStats, getRecentTransactions } from '../services/inventory'
+import { formatCurrency } from '../utils/formatCurrency'
 
 const fmt = (n) => (n == null ? '0' : Number(n).toLocaleString('vi-VN'))
-const fmtVND = (n) => `${fmt(n)} ₫`
 const fmtDate = (d) => (d ? String(d).slice(0, 10) : '—')
 
 function MetricCard({ icon, label, value, danger }) {
@@ -76,7 +76,7 @@ function Dashboard({ onNavigate }) {
         <MetricCard
           icon="💰"
           label="Tổng giá trị tồn kho"
-          value={fmtVND(stats?.total_stock_value)}
+          value={formatCurrency(stats?.total_stock_value)}
         />
       </div>
 
@@ -149,7 +149,7 @@ function Dashboard({ onNavigate }) {
                     {r.partner_name || '—'}
                   </td>
                   <td className="px-4 py-2 text-right text-gray-800">
-                    {fmt(r.total_value)}
+                    {formatCurrency(r.total_value)}
                   </td>
                 </tr>
               ))

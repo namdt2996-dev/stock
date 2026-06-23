@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { getPartners, getLocations, getProducts } from '../services/masterData'
 import { createInboundReceipt } from '../services/inventory'
 import PrintButton from '../components/PrintButton'
+import { formatCurrency } from '../utils/formatCurrency'
 
 const today = () => new Date().toISOString().slice(0, 10)
 
@@ -300,7 +301,7 @@ function InboundReceipt() {
                   />
                 </td>
                 <td className="px-3 py-2 text-right text-gray-700">
-                  {fmt(lineTotal(line))}
+                  {formatCurrency(lineTotal(line))}
                 </td>
                 <td className="px-3 py-2 text-center">
                   <button
@@ -322,7 +323,7 @@ function InboundReceipt() {
                 Tổng giá trị
               </td>
               <td className="px-3 py-2 text-right text-green-700">
-                {fmt(grandTotal)}
+                {formatCurrency(grandTotal)}
               </td>
               <td></td>
             </tr>
@@ -417,8 +418,8 @@ function InboundReceipt() {
                   <td style={{ border: '1px solid #333', padding: '4px 6px' }}>{l.lot_number}</td>
                   <td style={{ border: '1px solid #333', padding: '4px 6px' }}>{l.expiry_date || '—'}</td>
                   <td style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'right' }}>{fmt(l.quantity)}</td>
-                  <td style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'right' }}>{fmt(l.unit_cost)}</td>
-                  <td style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'right' }}>{fmt(lineTotal(l))}</td>
+                  <td style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'right' }}>{formatCurrency(l.unit_cost)}</td>
+                  <td style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'right' }}>{formatCurrency(lineTotal(l))}</td>
                 </tr>
               ))}
           </tbody>
@@ -428,7 +429,7 @@ function InboundReceipt() {
                 Tổng giá trị
               </td>
               <td style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'right', fontWeight: 700 }}>
-                {fmt(grandTotal)}
+                {formatCurrency(grandTotal)}
               </td>
             </tr>
           </tfoot>

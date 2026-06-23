@@ -175,7 +175,7 @@ export async function getTransactions(filters = {}) {
       transaction_id, transaction_date, transaction_type,
       exit_reason_code, reference_doc,
       partners:partner_id ( name ),
-      transaction_details ( total_amount )
+      transaction_details ( total_amount, location_from, location_to )
     `
   )
 
@@ -193,19 +193,29 @@ export async function getTransactions(filters = {}) {
   const { data, error } = await query
   if (error) throw error
 
-  return (data ?? []).map((t) => ({
-    transaction_id: t.transaction_id,
-    transaction_date: t.transaction_date,
-    transaction_type: t.transaction_type,
-    exit_reason_code: t.exit_reason_code,
-    reference_doc: t.reference_doc,
-    partner_name: t.partners?.name ?? null,
-    line_count: t.transaction_details?.length ?? 0,
-    total_value: (t.transaction_details ?? []).reduce(
-      (s, d) => s + (Number(d.total_amount) || 0),
-      0
-    ),
-  }))
+  return (data ?? []).map((t) => {
+    const details = t.transaction_details ?? []
+    // ADJUST: tổng có dấu (tăng = location_to, giảm = location_from).
+    // Các loại khác: tổng dương như thường.
+    const total_value =
+      t.transaction_type === 'ADJUST'
+        ? details.reduce(
+            (s, d) =>
+              s + (d.location_to ? 1 : -1) * (Number(d.total_amount) || 0),
+            0
+          )
+        : details.reduce((s, d) => s + (Number(d.total_amount) || 0), 0)
+    return {
+      transaction_id: t.transaction_id,
+      transaction_date: t.transaction_date,
+      transaction_type: t.transaction_type,
+      exit_reason_code: t.exit_reason_code,
+      reference_doc: t.reference_doc,
+      partner_name: t.partners?.name ?? null,
+      line_count: details.length,
+      total_value,
+    }
+  })
 }
 
 /**

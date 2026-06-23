@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { getProducts } from '../services/masterData'
 import { getTransactions, getTransactionDetails } from '../services/inventory'
 import { exportToCsv } from '../utils/exportCsv'
+import { formatCurrency } from '../utils/formatCurrency'
 
 const EXIT_REASON_LABELS = {
   PROCESSING: 'Xuất bếp',
@@ -254,8 +255,18 @@ function TransactionHistory() {
                   <td className="px-3 py-2 text-right text-gray-700">
                     {r.line_count}
                   </td>
-                  <td className="px-3 py-2 text-right text-gray-800">
-                    {fmt(r.total_value)}
+                  <td
+                    className={`px-3 py-2 text-right ${
+                      r.transaction_type === 'ADJUST'
+                        ? r.total_value < 0
+                          ? 'text-red-600'
+                          : 'text-orange-600'
+                        : 'text-gray-800'
+                    }`}
+                  >
+                    {r.transaction_type === 'ADJUST' && r.total_value > 0
+                      ? `+${formatCurrency(r.total_value)}`
+                      : formatCurrency(r.total_value)}
                   </td>
                   <td className="px-3 py-2 text-center">
                     <button
@@ -341,8 +352,8 @@ function TransactionHistory() {
                         <td className="px-2 py-2 text-gray-600">{fmtDate(d.expiry_date)}</td>
                         <td className="px-2 py-2 text-right text-gray-700">{fmt(d.quantity_moved)}</td>
                         <td className="px-2 py-2 text-gray-600">{d.unit_of_measure}</td>
-                        <td className="px-2 py-2 text-right text-gray-700">{fmt(d.unit_cost)}</td>
-                        <td className="px-2 py-2 text-right text-gray-800">{fmt(d.total_amount)}</td>
+                        <td className="px-2 py-2 text-right text-gray-700">{formatCurrency(d.unit_cost)}</td>
+                        <td className="px-2 py-2 text-right text-gray-800">{formatCurrency(d.total_amount)}</td>
                         <td className="px-2 py-2 text-gray-600">
                           {d.location_to_name || d.location_from_name || '—'}
                         </td>
@@ -356,7 +367,7 @@ function TransactionHistory() {
                       Tổng giá trị
                     </td>
                     <td className="px-2 py-2 text-right text-green-700">
-                      {fmt(detailTotal)}
+                      {formatCurrency(detailTotal)}
                     </td>
                     <td></td>
                   </tr>

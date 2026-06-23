@@ -322,7 +322,13 @@ function StockTake() {
                               {renderActualInput(r, e, entered, actual)}
                             </td>
                             <td className={`px-3 py-2 text-right font-medium ${entered ? diffColor(diff) : 'text-gray-400'}`}>
-                              {entered ? (diff > 0 ? `+${fmt(diff)}` : fmt(diff)) : '—'}
+                              {!entered
+                                ? '—'
+                                : diff === 0
+                                  ? '✓'
+                                  : diff > 0
+                                    ? `+${fmt(diff)}`
+                                    : fmt(diff)}
                             </td>
                           </tr>
                         )
