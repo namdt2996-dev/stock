@@ -148,8 +148,7 @@ export async function getStockLevels() {
  * và tổng giá trị.
  *
  * filters: { transaction_type, date_from, date_to, product_id } — đều optional.
- * Sắp xếp transaction_date DESC (transactions không có cột created_at nên dùng
- * transaction_id làm tiêu chí phụ ổn định).
+ * Sắp xếp transaction_date DESC, created_at DESC (created_at thêm ở migration 006).
  */
 export async function getTransactions(filters = {}) {
   const { transaction_type, date_from, date_to, product_id } = filters
@@ -184,7 +183,7 @@ export async function getTransactions(filters = {}) {
 
   query = query
     .order('transaction_date', { ascending: false })
-    .order('transaction_id', { ascending: false })
+    .order('created_at', { ascending: false })
 
   const { data, error } = await query
   if (error) throw error
