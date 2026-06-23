@@ -176,7 +176,7 @@ function OutboundReceipt() {
         </label>
 
         <label className="flex flex-col text-sm text-gray-600">
-          Kho xuất <span className="text-red-500">*</span>
+          <span>Kho xuất <span className="text-red-500 text-xs">*</span></span>
           <select
             className={inputClass}
             value={header.location_id}
