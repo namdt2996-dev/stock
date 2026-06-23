@@ -142,3 +142,100 @@ export async function getStockLevels() {
 
   return rows
 }
+
+/**
+ * Lấy danh sách phiếu giao dịch (mỗi phiếu 1 dòng header) kèm số dòng chi tiết
+ * và tổng giá trị.
+ *
+ * filters: { transaction_type, date_from, date_to, product_id } — đều optional.
+ * Sắp xếp transaction_date DESC (transactions không có cột created_at nên dùng
+ * transaction_id làm tiêu chí phụ ổn định).
+ */
+export async function getTransactions(filters = {}) {
+  const { transaction_type, date_from, date_to, product_id } = filters
+
+  // Lọc theo sản phẩm: tìm trước các transaction_id có chứa sản phẩm đó.
+  let txIds = null
+  if (product_id) {
+    const { data: d, error: e } = await supabase
+      .from('transaction_details')
+      .select('transaction_id, batches!inner(product_id)')
+      .eq('batches.product_id', product_id)
+    if (e) throw e
+    txIds = [...new Set((d ?? []).map((r) => r.transaction_id))]
+    if (txIds.length === 0) return []
+  }
+
+  let query = supabase.from('transactions').select(
+    `
+      transaction_id, transaction_date, transaction_type,
+      exit_reason_code, reference_doc,
+      partners:partner_id ( name ),
+      transaction_details ( total_amount )
+    `
+  )
+
+  if (transaction_type && transaction_type !== 'all') {
+    query = query.eq('transaction_type', transaction_type)
+  }
+  if (date_from) query = query.gte('transaction_date', date_from)
+  if (date_to) query = query.lte('transaction_date', `${date_to}T23:59:59`)
+  if (txIds) query = query.in('transaction_id', txIds)
+
+  query = query
+    .order('transaction_date', { ascending: false })
+    .order('transaction_id', { ascending: false })
+
+  const { data, error } = await query
+  if (error) throw error
+
+  return (data ?? []).map((t) => ({
+    transaction_id: t.transaction_id,
+    transaction_date: t.transaction_date,
+    transaction_type: t.transaction_type,
+    exit_reason_code: t.exit_reason_code,
+    reference_doc: t.reference_doc,
+    partner_name: t.partners?.name ?? null,
+    line_count: t.transaction_details?.length ?? 0,
+    total_value: (t.transaction_details ?? []).reduce(
+      (s, d) => s + (Number(d.total_amount) || 0),
+      0
+    ),
+  }))
+}
+
+/**
+ * Lấy chi tiết các dòng của một phiếu giao dịch.
+ * Trả về: product_name, unit_of_measure, lot_number, expiry_date,
+ *         quantity_moved, unit_cost, total_amount,
+ *         location_from_name, location_to_name
+ */
+export async function getTransactionDetails(transaction_id) {
+  const { data, error } = await supabase
+    .from('transaction_details')
+    .select(
+      `
+      quantity_moved, unit_cost, total_amount,
+      batches:batch_id (
+        lot_number, expiry_date,
+        products:product_id ( name, unit_of_measure )
+      ),
+      from_loc:locations!location_from ( warehouse_name ),
+      to_loc:locations!location_to ( warehouse_name )
+    `
+    )
+    .eq('transaction_id', transaction_id)
+  if (error) throw error
+
+  return (data ?? []).map((d) => ({
+    product_name: d.batches?.products?.name ?? '',
+    unit_of_measure: d.batches?.products?.unit_of_measure ?? '',
+    lot_number: d.batches?.lot_number ?? '',
+    expiry_date: d.batches?.expiry_date ?? null,
+    quantity_moved: d.quantity_moved,
+    unit_cost: d.unit_cost,
+    total_amount: d.total_amount,
+    location_from_name: d.from_loc?.warehouse_name ?? null,
+    location_to_name: d.to_loc?.warehouse_name ?? null,
+  }))
+}

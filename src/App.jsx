@@ -5,6 +5,7 @@ import MasterData from './pages/MasterData'
 import InboundReceipt from './pages/InboundReceipt'
 import StockLevel from './pages/StockLevel'
 import OutboundReceipt from './pages/OutboundReceipt'
+import TransactionHistory from './pages/TransactionHistory'
 
 function App() {
   const [session, setSession] = useState(null)
@@ -47,6 +48,7 @@ function App() {
           {navLink('inbound', 'Nhập kho')}
           {navLink('stock', 'Tồn kho')}
           {navLink('outbound', 'Xuất hàng')}
+          {navLink('history', 'Lịch sử')}
         </nav>
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-600">Xin chào {session.user.email}</span>
@@ -65,6 +67,7 @@ function App() {
         {page === 'inbound' && <InboundReceipt />}
         {page === 'stock' && <StockLevel />}
         {page === 'outbound' && <OutboundReceipt />}
+        {page === 'history' && <TransactionHistory />}
       </main>
     </div>
   )
