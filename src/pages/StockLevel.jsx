@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getStockLevels } from '../services/inventory'
+import { getLocations } from '../services/masterData'
 
 // Số ngày còn lại tới hạn dùng (null nếu không có expiry_date)
 function daysUntil(dateStr) {
@@ -25,14 +26,16 @@ const fmtQty = (n) => (n == null ? '' : Number(n).toLocaleString('vi-VN'))
 
 function StockLevel() {
   const [rows, setRows] = useState([])
+  const [locations, setLocations] = useState([])
+  const [locationId, setLocationId] = useState('') // '' = tất cả kho
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  async function load() {
+  async function load(locId = locationId) {
     setLoading(true)
     setError(null)
     try {
-      setRows(await getStockLevels())
+      setRows(await getStockLevels(locId || null))
     } catch (e) {
       setError(e.message)
     }
@@ -40,8 +43,22 @@ function StockLevel() {
   }
 
   useEffect(() => {
+    getLocations()
+      .then(setLocations)
+      .catch((e) => setError(e.message))
     load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  function handleLocationChange(locId) {
+    setLocationId(locId)
+    load(locId)
+  }
+
+  const allLocations = locationId === ''
+  const currentWarehouse = locations.find(
+    (l) => l.location_id === locationId
+  )?.warehouse_name
 
   const redCount = rows.filter((r) => expiryLevel(r.expiry_date) === 'red').length
   const orangeCount = rows.filter(
@@ -54,15 +71,31 @@ function StockLevel() {
   return (
     <div className="max-w-6xl mx-auto p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-gray-800">Tồn kho</h2>
-        <button
-          type="button"
-          onClick={load}
-          disabled={loading}
-          className="bg-gray-700 text-white text-sm font-medium px-4 py-1.5 rounded hover:bg-gray-800 disabled:opacity-50"
-        >
-          {loading ? 'Đang tải…' : '↻ Làm mới'}
-        </button>
+        <h2 className="text-xl font-bold text-gray-800">
+          Tồn kho{!allLocations && currentWarehouse ? ` — ${currentWarehouse}` : ''}
+        </h2>
+        <div className="flex items-center gap-3">
+          <select
+            className="border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+            value={locationId}
+            onChange={(e) => handleLocationChange(e.target.value)}
+          >
+            <option value="">Tất cả kho</option>
+            {locations.map((l) => (
+              <option key={l.location_id} value={l.location_id}>
+                {l.warehouse_name}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => load()}
+            disabled={loading}
+            className="bg-gray-700 text-white text-sm font-medium px-4 py-1.5 rounded hover:bg-gray-800 disabled:opacity-50"
+          >
+            {loading ? 'Đang tải…' : '↻ Làm mới'}
+          </button>
+        </div>
       </div>
 
       {/* Cảnh báo hạn dùng */}
@@ -93,14 +126,14 @@ function StockLevel() {
               <th className="text-left px-3 py-2">Số lô</th>
               <th className="text-left px-3 py-2">Hạn dùng</th>
               <th className="text-right px-3 py-2">Tồn</th>
-              <th className="text-left px-3 py-2">Kho</th>
+              {allLocations && <th className="text-left px-3 py-2">Kho</th>}
               <th className="text-left px-3 py-2">Ngày nhập</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-3 py-4 text-center text-gray-400">
+                <td colSpan={allLocations ? 8 : 7} className="px-3 py-4 text-center text-gray-400">
                   {loading ? 'Đang tải…' : 'Chưa có tồn kho'}
                 </td>
               </tr>
@@ -125,7 +158,9 @@ function StockLevel() {
                     <td className="px-3 py-2 text-right text-gray-800">
                       {fmtQty(r.current_quantity)}
                     </td>
-                    <td className="px-3 py-2 text-gray-600">{r.warehouse_name}</td>
+                    {allLocations && (
+                      <td className="px-3 py-2 text-gray-600">{r.warehouse_name}</td>
+                    )}
                     <td className="px-3 py-2 text-gray-600">{r.received_date ?? '—'}</td>
                   </tr>
                 )

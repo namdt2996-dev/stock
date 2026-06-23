@@ -102,9 +102,11 @@ export async function getProductsByLocation(location_id) {
  *   { product_name, sku, unit_of_measure, lot_number, expiry_date,
  *     current_quantity, warehouse_name, received_date }
  * Sắp xếp theo product_name ASC, expiry_date ASC.
+ *
+ * location_id (optional): nếu có giá trị thì chỉ lấy tồn của kho đó.
  */
-export async function getStockLevels() {
-  const { data, error } = await supabase
+export async function getStockLevels(location_id = null) {
+  let query = supabase
     .from('inventory_stock_level')
     .select(
       `
@@ -118,6 +120,9 @@ export async function getStockLevels() {
       locations:location_id ( warehouse_name )
     `
     )
+  if (location_id) query = query.eq('location_id', location_id)
+
+  const { data, error } = await query
   if (error) throw error
 
   const rows = (data ?? []).map((r) => ({
