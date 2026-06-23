@@ -112,12 +112,21 @@ code {
   background: var(--code-bg);
 }
 
+/* Khối chỉ hiển thị khi in */
+.print-only {
+  display: none;
+}
+
 @media print {
   /* Ẩn navigation, buttons, toast */
   nav,
   button,
   .no-print {
     display: none !important;
+  }
+  /* Hiện khối in đẹp */
+  .print-only {
+    display: block;
   }
   /* Chỉ hiện nội dung phiếu */
   body {

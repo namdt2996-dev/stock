@@ -40,6 +40,12 @@ function OutboundReceipt() {
   const [saving, setSaving] = useState(false)
   const [showToast, setShowToast] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [isDirty, setIsDirty] = useState(false)
+
+  // Đánh dấu "có thay đổi chưa lưu" nếu user sửa sau khi đã lưu
+  function touch() {
+    if (saved) setIsDirty(true)
+  }
 
   // Tự ẩn toast sau 15 giây
   useEffect(() => {
@@ -65,11 +71,11 @@ function OutboundReceipt() {
 
   // Đổi kho: load lại sản phẩm có tồn trong kho đó + reset toàn bộ dòng
   async function handleLocationChange(location_id) {
+    touch()
     setHeader((h) => ({ ...h, location_id }))
     setLines([emptyLine()])
     setProducts([])
     setError(null)
-    setSaved(false)
     if (!location_id) return
     try {
       setProducts(await getProductsByLocation(location_id))
@@ -78,7 +84,13 @@ function OutboundReceipt() {
     }
   }
 
+  function updateHeader(field, value) {
+    touch()
+    setHeader((h) => ({ ...h, [field]: value }))
+  }
+
   function updateLine(index, field, value) {
+    touch()
     setLines((prev) =>
       prev.map((l, i) => (i === index ? { ...l, [field]: value } : l))
     )
@@ -86,6 +98,7 @@ function OutboundReceipt() {
 
   // Chọn sản phẩm: gán product_id + tự điền ĐVT (unit_of_measure) read-only
   function handleProductChange(index, product_id) {
+    touch()
     const p = products.find((x) => x.product_id === product_id)
     setLines((prev) =>
       prev.map((l, i) =>
@@ -97,10 +110,12 @@ function OutboundReceipt() {
   }
 
   function addLine() {
+    touch()
     setLines((prev) => [...prev, emptyLine()])
   }
 
   function removeLine(index) {
+    touch()
     setLines((prev) =>
       prev.length === 1 ? prev : prev.filter((_, i) => i !== index)
     )
@@ -111,11 +126,13 @@ function OutboundReceipt() {
     setLines([emptyLine()])
     setError(null)
     setSaved(false)
+    setIsDirty(false)
   }
 
   async function handleSave() {
     setError(null)
     setSaved(false)
+    setIsDirty(false)
 
     if (!header.location_id) {
       return setError('Vui lòng chọn kho xuất.')
@@ -159,6 +176,8 @@ function OutboundReceipt() {
         </div>
       )}
 
+      {/* FORM nhập liệu — ẩn khi in */}
+      <div className="no-print">
       <h2 className="text-xl font-bold text-gray-800 mb-4">Phiếu xuất kho</h2>
 
       {/* HEADER — 5 field trên 1 grid: mobile 1 cột, sm 2 cột, lg 5 cột */}
@@ -170,9 +189,7 @@ function OutboundReceipt() {
             className={inputClass}
             value={header.transaction_date}
             max={today()}
-            onChange={(e) =>
-              setHeader({ ...header, transaction_date: e.target.value })
-            }
+            onChange={(e) => updateHeader('transaction_date', e.target.value)}
           />
         </label>
 
@@ -181,9 +198,7 @@ function OutboundReceipt() {
           <select
             className={inputClass}
             value={header.exit_reason_code}
-            onChange={(e) =>
-              setHeader({ ...header, exit_reason_code: e.target.value })
-            }
+            onChange={(e) => updateHeader('exit_reason_code', e.target.value)}
           >
             {EXIT_REASONS.map((r) => (
               <option key={r.code} value={r.code}>
@@ -214,9 +229,7 @@ function OutboundReceipt() {
           <select
             className={inputClass}
             value={header.partner_id}
-            onChange={(e) =>
-              setHeader({ ...header, partner_id: e.target.value })
-            }
+            onChange={(e) => updateHeader('partner_id', e.target.value)}
           >
             <option value="">-- {isSale ? 'Chọn khách hàng' : 'Không'} --</option>
             {partners.map((p) => (
@@ -233,9 +246,7 @@ function OutboundReceipt() {
             type="text"
             className={inputClass}
             value={header.reference_doc}
-            onChange={(e) =>
-              setHeader({ ...header, reference_doc: e.target.value })
-            }
+            onChange={(e) => updateHeader('reference_doc', e.target.value)}
           />
         </label>
       </div>
@@ -320,10 +331,10 @@ function OutboundReceipt() {
         <button
           type="button"
           onClick={handleSave}
-          disabled={saving}
+          disabled={saving || saved}
           className="bg-green-600 text-white text-sm font-medium px-5 py-2 rounded hover:bg-green-700 disabled:opacity-50"
         >
-          {saving ? 'Đang lưu…' : 'Lưu phiếu xuất'}
+          {saved ? 'Đã lưu ✓' : saving ? 'Đang lưu…' : 'Lưu phiếu xuất'}
         </button>
         <button
           type="button"
@@ -333,10 +344,73 @@ function OutboundReceipt() {
         >
           Hủy
         </button>
-        {saved && <PrintButton />}
+        {saved && !isDirty && <PrintButton />}
+        {saved && isDirty && (
+          <span className="text-xs text-amber-600">Có thay đổi chưa lưu</span>
+        )}
       </div>
 
       {error && <p className="mt-4 text-red-600 text-sm">{error}</p>}
+      </div>
+
+      {/* KHỐI IN — chỉ hiện khi @media print */}
+      <div className="print-only">
+        <h1 style={{ fontSize: '20px', fontWeight: 700, marginBottom: 8 }}>
+          PHIẾU XUẤT KHO
+        </h1>
+        <div style={{ fontSize: 13, lineHeight: '20px', marginBottom: 12 }}>
+          <div>Số phiếu tham chiếu: {header.reference_doc || '—'}</div>
+          <div>Ngày xuất: {header.transaction_date}</div>
+          <div>
+            Lý do xuất:{' '}
+            {EXIT_REASONS.find((r) => r.code === header.exit_reason_code)?.label ||
+              header.exit_reason_code}
+          </div>
+          <div>
+            Kho xuất:{' '}
+            {locations.find((l) => l.location_id === header.location_id)
+              ?.warehouse_name || '—'}
+          </div>
+          <div>
+            Đối tác:{' '}
+            {partners.find((p) => p.partner_id === header.partner_id)?.name ||
+              '—'}
+          </div>
+        </div>
+        <table
+          style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}
+        >
+          <thead>
+            <tr>
+              {['STT', 'Sản phẩm', 'ĐVT', 'Số lượng cần xuất'].map((h) => (
+                <th
+                  key={h}
+                  style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'left' }}
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {lines
+              .filter((l) => l.product_id)
+              .map((l, idx) => (
+                <tr key={idx}>
+                  <td style={{ border: '1px solid #333', padding: '4px 6px' }}>{idx + 1}</td>
+                  <td style={{ border: '1px solid #333', padding: '4px 6px' }}>
+                    {products.find((p) => p.product_id === l.product_id)?.name || ''}
+                  </td>
+                  <td style={{ border: '1px solid #333', padding: '4px 6px' }}>{l.unit_of_measure}</td>
+                  <td style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'right' }}>{l.quantity}</td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
+        <p style={{ fontSize: 12, marginTop: 8, fontStyle: 'italic' }}>
+          Lô hàng được chọn tự động theo FEFO (hạn dùng gần nhất xuất trước).
+        </p>
+      </div>
     </div>
   )
 }

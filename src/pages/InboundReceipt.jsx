@@ -40,6 +40,12 @@ function InboundReceipt() {
   const [saving, setSaving] = useState(false)
   const [showToast, setShowToast] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [isDirty, setIsDirty] = useState(false)
+
+  // Đánh dấu "có thay đổi chưa lưu" nếu user sửa sau khi đã lưu
+  function touch() {
+    if (saved) setIsDirty(true)
+  }
 
   // Tự ẩn toast sau 15 giây
   useEffect(() => {
@@ -71,7 +77,13 @@ function InboundReceipt() {
 
   const grandTotal = lines.reduce((sum, l) => sum + lineTotal(l), 0)
 
+  function updateHeader(field, value) {
+    touch()
+    setHeader((h) => ({ ...h, [field]: value }))
+  }
+
   function updateLine(index, field, value) {
+    touch()
     setLines((prev) =>
       prev.map((l, i) => (i === index ? { ...l, [field]: value } : l))
     )
@@ -79,6 +91,7 @@ function InboundReceipt() {
 
   // Chọn sản phẩm: gán product_id + tự điền ĐVT (unit_of_measure) read-only
   function handleProductChange(index, product_id) {
+    touch()
     const p = products.find((x) => x.product_id === product_id)
     setLines((prev) =>
       prev.map((l, i) =>
@@ -90,10 +103,12 @@ function InboundReceipt() {
   }
 
   function addLine() {
+    touch()
     setLines((prev) => [...prev, emptyLine()])
   }
 
   function removeLine(index) {
+    touch()
     setLines((prev) =>
       prev.length === 1 ? prev : prev.filter((_, i) => i !== index)
     )
@@ -105,12 +120,14 @@ function InboundReceipt() {
     setError(null)
     setSuccess(null)
     setSaved(false)
+    setIsDirty(false)
   }
 
   async function handleSave() {
     setError(null)
     setSuccess(null)
     setSaved(false)
+    setIsDirty(false)
 
     if (!header.partner_id) return setError('Vui lòng chọn nhà cung cấp.')
     if (!header.location_id) return setError('Vui lòng chọn kho nhập.')
@@ -154,6 +171,8 @@ function InboundReceipt() {
         </div>
       )}
 
+      {/* FORM nhập liệu — ẩn khi in */}
+      <div className="no-print">
       <h2 className="text-xl font-bold text-gray-800 mb-4">Phiếu nhập kho</h2>
 
       {/* HEADER — 4 field: mobile 1 cột, sm 2 cột, lg 4 cột */}
@@ -165,9 +184,7 @@ function InboundReceipt() {
             className={inputClass}
             value={header.transaction_date}
             max={today()}
-            onChange={(e) =>
-              setHeader({ ...header, transaction_date: e.target.value })
-            }
+            onChange={(e) => updateHeader('transaction_date', e.target.value)}
           />
         </label>
 
@@ -176,9 +193,7 @@ function InboundReceipt() {
           <select
             className={inputClass}
             value={header.partner_id}
-            onChange={(e) =>
-              setHeader({ ...header, partner_id: e.target.value })
-            }
+            onChange={(e) => updateHeader('partner_id', e.target.value)}
           >
             <option value="">-- Chọn NCC --</option>
             {suppliers.map((s) => (
@@ -194,9 +209,7 @@ function InboundReceipt() {
           <select
             className={inputClass}
             value={header.location_id}
-            onChange={(e) =>
-              setHeader({ ...header, location_id: e.target.value })
-            }
+            onChange={(e) => updateHeader('location_id', e.target.value)}
           >
             <option value="">-- Chọn kho --</option>
             {locations.map((l) => (
@@ -213,9 +226,7 @@ function InboundReceipt() {
             type="text"
             className={inputClass}
             value={header.reference_doc}
-            onChange={(e) =>
-              setHeader({ ...header, reference_doc: e.target.value })
-            }
+            onChange={(e) => updateHeader('reference_doc', e.target.value)}
           />
         </label>
       </div>
@@ -334,10 +345,10 @@ function InboundReceipt() {
         <button
           type="button"
           onClick={handleSave}
-          disabled={saving}
+          disabled={saving || saved}
           className="bg-green-600 text-white text-sm font-medium px-5 py-2 rounded hover:bg-green-700 disabled:opacity-50"
         >
-          {saving ? 'Đang lưu…' : 'Lưu phiếu nhập'}
+          {saved ? 'Đã lưu ✓' : saving ? 'Đang lưu…' : 'Lưu phiếu nhập'}
         </button>
         <button
           type="button"
@@ -347,11 +358,82 @@ function InboundReceipt() {
         >
           Hủy
         </button>
-        {saved && <PrintButton />}
+        {saved && !isDirty && <PrintButton />}
+        {saved && isDirty && (
+          <span className="text-xs text-amber-600">Có thay đổi chưa lưu</span>
+        )}
       </div>
 
       {error && <p className="mt-4 text-red-600 text-sm">{error}</p>}
       {success && <p className="mt-4 text-green-700 text-sm">{success}</p>}
+      </div>
+
+      {/* KHỐI IN — chỉ hiện khi @media print */}
+      <div className="print-only">
+        <h1 style={{ fontSize: '20px', fontWeight: 700, marginBottom: 8 }}>
+          PHIẾU NHẬP KHO
+        </h1>
+        <div style={{ fontSize: 13, lineHeight: '20px', marginBottom: 12 }}>
+          <div>Số phiếu tham chiếu: {header.reference_doc || '—'}</div>
+          <div>Ngày nhập: {header.transaction_date}</div>
+          <div>
+            Nhà cung cấp:{' '}
+            {suppliers.find((s) => s.partner_id === header.partner_id)?.name ||
+              '—'}
+          </div>
+          <div>
+            Kho nhập:{' '}
+            {locations.find((l) => l.location_id === header.location_id)
+              ?.warehouse_name || '—'}
+          </div>
+        </div>
+        <table
+          style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}
+        >
+          <thead>
+            <tr>
+              {['STT', 'Sản phẩm', 'ĐVT', 'Số lô', 'Hạn dùng', 'Số lượng', 'Giá cost', 'Thành tiền'].map(
+                (h) => (
+                  <th
+                    key={h}
+                    style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'left' }}
+                  >
+                    {h}
+                  </th>
+                )
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {lines
+              .filter((l) => l.product_id)
+              .map((l, idx) => (
+                <tr key={idx}>
+                  <td style={{ border: '1px solid #333', padding: '4px 6px' }}>{idx + 1}</td>
+                  <td style={{ border: '1px solid #333', padding: '4px 6px' }}>
+                    {products.find((p) => p.product_id === l.product_id)?.name || ''}
+                  </td>
+                  <td style={{ border: '1px solid #333', padding: '4px 6px' }}>{l.unit_of_measure}</td>
+                  <td style={{ border: '1px solid #333', padding: '4px 6px' }}>{l.lot_number}</td>
+                  <td style={{ border: '1px solid #333', padding: '4px 6px' }}>{l.expiry_date || '—'}</td>
+                  <td style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'right' }}>{fmt(l.quantity)}</td>
+                  <td style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'right' }}>{fmt(l.unit_cost)}</td>
+                  <td style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'right' }}>{fmt(lineTotal(l))}</td>
+                </tr>
+              ))}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colSpan={7} style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'right', fontWeight: 700 }}>
+                Tổng giá trị
+              </td>
+              <td style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'right', fontWeight: 700 }}>
+                {fmt(grandTotal)}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
     </div>
   )
 }
