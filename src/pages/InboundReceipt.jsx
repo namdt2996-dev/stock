@@ -138,8 +138,8 @@ function InboundReceipt() {
 
       <h2 className="text-xl font-bold text-gray-800 mb-4">Phiếu nhập kho</h2>
 
-      {/* HEADER */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white border border-gray-200 rounded p-4 mb-4">
+      {/* HEADER — 4 field: mobile 1 cột, sm 2 cột, lg 4 cột */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-white border border-gray-200 rounded p-4 mb-4">
         <label className="flex flex-col text-sm text-gray-600">
           Ngày nhập
           <input
