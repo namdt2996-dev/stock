@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { getPartners, getLocations, getProducts } from '../services/masterData'
 import { createInboundReceipt } from '../services/inventory'
+import PrintButton from '../components/PrintButton'
 
 const today = () => new Date().toISOString().slice(0, 10)
 
 const emptyLine = () => ({
   product_id: '',
+  unit_of_measure: '',
   lot_number: '',
   expiry_date: '',
   quantity: '',
@@ -37,6 +39,7 @@ function InboundReceipt() {
   const [success, setSuccess] = useState(null)
   const [saving, setSaving] = useState(false)
   const [showToast, setShowToast] = useState(false)
+  const [saved, setSaved] = useState(false)
 
   // Tự ẩn toast sau 15 giây
   useEffect(() => {
@@ -74,6 +77,18 @@ function InboundReceipt() {
     )
   }
 
+  // Chọn sản phẩm: gán product_id + tự điền ĐVT (unit_of_measure) read-only
+  function handleProductChange(index, product_id) {
+    const p = products.find((x) => x.product_id === product_id)
+    setLines((prev) =>
+      prev.map((l, i) =>
+        i === index
+          ? { ...l, product_id, unit_of_measure: p?.unit_of_measure ?? '' }
+          : l
+      )
+    )
+  }
+
   function addLine() {
     setLines((prev) => [...prev, emptyLine()])
   }
@@ -89,11 +104,13 @@ function InboundReceipt() {
     setLines([emptyLine()])
     setError(null)
     setSuccess(null)
+    setSaved(false)
   }
 
   async function handleSave() {
     setError(null)
     setSuccess(null)
+    setSaved(false)
 
     if (!header.partner_id) return setError('Vui lòng chọn nhà cung cấp.')
     if (!header.location_id) return setError('Vui lòng chọn kho nhập.')
@@ -120,7 +137,8 @@ function InboundReceipt() {
       const transaction_id = await createInboundReceipt(header, cleanLines)
       setSuccess(`Đã lưu phiếu nhập thành công (mã: ${transaction_id}).`)
       setShowToast(true)
-      resetForm()
+      // Giữ nguyên dữ liệu phiếu để có thể IN; bấm "Hủy" để tạo phiếu mới.
+      setSaved(true)
     } catch (e) {
       setError(e.message)
     }
@@ -131,7 +149,7 @@ function InboundReceipt() {
     <div className="max-w-5xl mx-auto p-6">
       {/* TOAST thành công — góc trên phải, tự ẩn sau 15s */}
       {showToast && (
-        <div className="fixed top-4 right-4 z-50 bg-green-600 text-white text-sm font-medium px-4 py-3 rounded shadow-lg">
+        <div className="no-print fixed top-4 right-4 z-50 bg-green-600 text-white text-sm font-medium px-4 py-3 rounded shadow-lg">
           ✓ Phiếu nhập kho đã được lưu thành công!
         </div>
       )}
@@ -208,6 +226,7 @@ function InboundReceipt() {
           <thead className="bg-gray-50 text-gray-600">
             <tr>
               <th className="text-left px-3 py-2">Sản phẩm</th>
+              <th className="text-left px-3 py-2">ĐVT</th>
               <th className="text-left px-3 py-2">Số lô</th>
               <th className="text-left px-3 py-2">Hạn dùng</th>
               <th className="text-right px-3 py-2">Số lượng</th>
@@ -223,7 +242,7 @@ function InboundReceipt() {
                   <select
                     className={inputClass}
                     value={line.product_id}
-                    onChange={(e) => updateLine(i, 'product_id', e.target.value)}
+                    onChange={(e) => handleProductChange(i, e.target.value)}
                   >
                     <option value="">-- Chọn SP --</option>
                     {products.map((p) => (
@@ -232,6 +251,9 @@ function InboundReceipt() {
                       </option>
                     ))}
                   </select>
+                </td>
+                <td className="px-3 py-2 text-gray-600">
+                  {line.unit_of_measure || '—'}
                 </td>
                 <td className="px-3 py-2">
                   <input
@@ -285,7 +307,7 @@ function InboundReceipt() {
           </tbody>
           <tfoot>
             <tr className="border-t border-gray-200 bg-gray-50 font-medium">
-              <td colSpan={5} className="px-3 py-2 text-right">
+              <td colSpan={6} className="px-3 py-2 text-right">
                 Tổng giá trị
               </td>
               <td className="px-3 py-2 text-right text-green-700">
@@ -325,6 +347,7 @@ function InboundReceipt() {
         >
           Hủy
         </button>
+        {saved && <PrintButton />}
       </div>
 
       {error && <p className="mt-4 text-red-600 text-sm">{error}</p>}

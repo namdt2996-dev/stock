@@ -4,6 +4,7 @@ import {
   createOutboundReceipt,
   getProductsByLocation,
 } from '../services/inventory'
+import PrintButton from '../components/PrintButton'
 
 const today = () => new Date().toISOString().slice(0, 10)
 
@@ -14,7 +15,7 @@ const EXIT_REASONS = [
   { code: 'WASTE', label: 'Hủy hàng' },
 ]
 
-const emptyLine = () => ({ product_id: '', quantity: '' })
+const emptyLine = () => ({ product_id: '', unit_of_measure: '', quantity: '' })
 
 const emptyHeader = () => ({
   transaction_date: today(),
@@ -38,6 +39,7 @@ function OutboundReceipt() {
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
   const [showToast, setShowToast] = useState(false)
+  const [saved, setSaved] = useState(false)
 
   // Tự ẩn toast sau 15 giây
   useEffect(() => {
@@ -67,6 +69,7 @@ function OutboundReceipt() {
     setLines([emptyLine()])
     setProducts([])
     setError(null)
+    setSaved(false)
     if (!location_id) return
     try {
       setProducts(await getProductsByLocation(location_id))
@@ -78,6 +81,18 @@ function OutboundReceipt() {
   function updateLine(index, field, value) {
     setLines((prev) =>
       prev.map((l, i) => (i === index ? { ...l, [field]: value } : l))
+    )
+  }
+
+  // Chọn sản phẩm: gán product_id + tự điền ĐVT (unit_of_measure) read-only
+  function handleProductChange(index, product_id) {
+    const p = products.find((x) => x.product_id === product_id)
+    setLines((prev) =>
+      prev.map((l, i) =>
+        i === index
+          ? { ...l, product_id, unit_of_measure: p?.unit_of_measure ?? '' }
+          : l
+      )
     )
   }
 
@@ -95,10 +110,12 @@ function OutboundReceipt() {
     setHeader(emptyHeader())
     setLines([emptyLine()])
     setError(null)
+    setSaved(false)
   }
 
   async function handleSave() {
     setError(null)
+    setSaved(false)
 
     if (!header.location_id) {
       return setError('Vui lòng chọn kho xuất.')
@@ -125,7 +142,8 @@ function OutboundReceipt() {
     try {
       await createOutboundReceipt(header, cleanLines)
       setShowToast(true)
-      resetForm()
+      // Giữ nguyên dữ liệu phiếu để có thể IN; bấm "Hủy" để tạo phiếu mới.
+      setSaved(true)
     } catch (e) {
       setError(e.message)
     }
@@ -136,7 +154,7 @@ function OutboundReceipt() {
     <div className="max-w-5xl mx-auto p-6">
       {/* TOAST thành công — góc trên phải, tự ẩn sau 15s */}
       {showToast && (
-        <div className="fixed top-4 right-4 z-50 bg-green-600 text-white text-sm font-medium px-4 py-3 rounded shadow-lg">
+        <div className="no-print fixed top-4 right-4 z-50 bg-green-600 text-white text-sm font-medium px-4 py-3 rounded shadow-lg">
           ✓ Phiếu xuất kho đã được lưu thành công!
         </div>
       )}
@@ -233,6 +251,7 @@ function OutboundReceipt() {
           <thead className="bg-gray-50 text-gray-600">
             <tr>
               <th className="text-left px-3 py-2">Sản phẩm</th>
+              <th className="text-left px-3 py-2">ĐVT</th>
               <th className="text-right px-3 py-2">Số lượng cần xuất</th>
               <th className="px-3 py-2"></th>
             </tr>
@@ -245,7 +264,7 @@ function OutboundReceipt() {
                     className={`${inputClass} disabled:bg-gray-100 disabled:text-gray-400`}
                     value={line.product_id}
                     disabled={!header.location_id}
-                    onChange={(e) => updateLine(i, 'product_id', e.target.value)}
+                    onChange={(e) => handleProductChange(i, e.target.value)}
                   >
                     <option value="">
                       {header.location_id ? '-- Chọn SP --' : 'Chọn kho trước'}
@@ -256,6 +275,9 @@ function OutboundReceipt() {
                       </option>
                     ))}
                   </select>
+                </td>
+                <td className="px-3 py-2 text-gray-600">
+                  {line.unit_of_measure || '—'}
                 </td>
                 <td className="px-3 py-2 text-right">
                   <input
@@ -311,6 +333,7 @@ function OutboundReceipt() {
         >
           Hủy
         </button>
+        {saved && <PrintButton />}
       </div>
 
       {error && <p className="mt-4 text-red-600 text-sm">{error}</p>}

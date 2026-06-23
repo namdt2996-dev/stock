@@ -111,3 +111,23 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+@media print {
+  /* Ẩn navigation, buttons, toast */
+  nav,
+  button,
+  .no-print {
+    display: none !important;
+  }
+  /* Chỉ hiện nội dung phiếu */
+  body {
+    background: white;
+  }
+  /* Đảm bảo bảng không bị cắt giữa trang */
+  table {
+    page-break-inside: auto;
+  }
+  tr {
+    page-break-inside: avoid;
+  }
+}
