@@ -120,7 +120,11 @@ Mọi giao dịch xuất (`transaction_type = 'OUT'`) phải mang một mã lý 
 - [x] Giai đoạn 4A: Màn hình tồn kho — highlight 3 mức 7/45/90 ngày ✓
 - [x] Giai đoạn 4B: FEFO Postgres function — test xác nhận đúng thứ tự ✓
 - [x] Giai đoạn 4C: Form xuất hàng — filter SP theo kho, FEFO auto-select ✓
-- [ ] Giai đoạn 5: Báo cáo + Hoàn thiện
+- [x] Giai đoạn 5A: Lịch sử giao dịch — filter, modal, CSV export ✓
+- [x] Giai đoạn 5B: Dashboard — metric cards, cảnh báo hết hạn ✓
+- [x] Giai đoạn 5C: Export CSV — tồn kho + lịch sử ✓
+- [x] Kiểm kho (bổ sung): đếm theo lô, pack unit, ADJUST RPC ✓
+- [ ] Giai đoạn 5D: Deploy lên Vercel
 
 ---
 
@@ -152,4 +156,10 @@ Mọi giao dịch xuất (`transaction_type = 'OUT'`) phải mang một mã lý 
 - Supabase RPC tự serialize JSONB — không dùng `JSON.stringify()` khi gọi `.rpc()`
 - `create_outbound_receipt` RPC: 6 tham số gồm `p_location_id` (migration 005 — đã chạy thủ công trên Supabase Dashboard)
 - FEFO filter theo `location_id` — xuất từng kho riêng biệt
-- Migration naming: dùng prefix 001-005, chạy thủ công qua Dashboard (chưa dùng `supabase db push` do naming không phải timestamp format)
+- Migration naming: dùng prefix 001-009, chạy thủ công qua Dashboard (chưa dùng `supabase db push` do naming không phải timestamp format)
+- 4 RPC functions: `create_inbound_receipt`, `create_outbound_receipt` (outbound với location filter), `create_stock_adjustment`
+- Tiền tệ: EUR (€), format `de-DE`
+- `pack_unit` + `conversion_factor` trong bảng `products` (đơn vị đóng gói, hệ số quy đổi)
+- `transaction_type` ENUM: IN / OUT / TRANSFER / ADJUST
+- 8 trang UI: Dashboard, MasterData, InboundReceipt, OutboundReceipt, StockLevel, StockTake, TransactionHistory
+- Utility: `src/utils/formatCurrency.js`, `src/utils/exportCsv.js`
