@@ -18,7 +18,7 @@ function MasterData() {
   const [tab, setTab] = useState('products')
 
   return (
-    <div className="max-w-3xl mx-auto p-6">
+    <div className="max-w-3xl mx-auto p-3 sm:p-6">
       <h2 className="text-xl font-bold text-gray-800 mb-4">Master Data</h2>
 
       <div className="flex gap-2 border-b border-gray-200 mb-4">
@@ -47,6 +47,7 @@ function MasterData() {
 // ---------- shared UI ----------
 function Table({ columns, rows }) {
   return (
+    <div className="overflow-x-auto">
     <table className="w-full text-sm border border-gray-200">
       <thead className="bg-gray-50">
         <tr>
@@ -77,6 +78,7 @@ function Table({ columns, rows }) {
         )}
       </tbody>
     </table>
+    </div>
   )
 }
 

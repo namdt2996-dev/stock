@@ -31,7 +31,7 @@ function Login() {
         onSubmit={handleSubmit}
         className="w-full max-w-sm bg-white p-8 rounded-lg shadow space-y-4"
       >
-        <h1 className="text-2xl font-bold text-green-600 text-center">
+        <h1 className="text-xl sm:text-2xl font-bold text-green-600 text-center">
           Đăng nhập
         </h1>
 

@@ -114,7 +114,7 @@ function TransactionHistory() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
+    <div className="max-w-6xl mx-auto p-3 sm:p-6">
       <h2 className="text-xl font-bold text-gray-800 mb-4">Lịch sử giao dịch</h2>
 
       {/* FILTER BAR */}

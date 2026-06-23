@@ -200,7 +200,7 @@ function StockTake() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
+    <div className="max-w-6xl mx-auto p-3 sm:p-6">
       {showToast && (
         <div className="no-print fixed top-4 right-4 z-50 bg-green-600 text-white text-sm font-medium px-4 py-3 rounded shadow-lg">
           ✓ Đã lưu phiếu kiểm kho thành công!
