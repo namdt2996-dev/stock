@@ -117,8 +117,10 @@ Mọi giao dịch xuất (`transaction_type = 'OUT'`) phải mang một mã lý 
 - [x] Giai đoạn 2C: RLS policies — authenticated_all trên 7 bảng ✓
 - [x] Giai đoạn 3A: Master Data UI (products, partners, locations) ✓
 - [x] Giai đoạn 3B+3C: Phiếu nhập kho — form nhiều dòng, atomic via Postgres RPC, toast thông báo thành công ✓
-- [ ] Giai đoạn 4: Tồn kho + Xuất hàng (FEFO)
-- [ ] Giai đoạn 5: Báo cáo
+- [x] Giai đoạn 4A: Màn hình tồn kho — highlight 3 mức 7/45/90 ngày ✓
+- [x] Giai đoạn 4B: FEFO Postgres function — test xác nhận đúng thứ tự ✓
+- [x] Giai đoạn 4C: Form xuất hàng — filter SP theo kho, FEFO auto-select ✓
+- [ ] Giai đoạn 5: Báo cáo + Hoàn thiện
 
 ---
 
@@ -148,3 +150,6 @@ Mọi giao dịch xuất (`transaction_type = 'OUT'`) phải mang một mã lý 
 - Supabase CLI migration naming cần format timestamp (YYYYMMDDHHmmss) — các migration hiện tại dùng prefix 001/002/003, push thủ công qua Dashboard
 - RPC function `create_inbound_receipt`: atomic, SECURITY DEFINER, nhận `p_lines` là JSONB array (không stringify)
 - Supabase RPC tự serialize JSONB — không dùng `JSON.stringify()` khi gọi `.rpc()`
+- `create_outbound_receipt` RPC: 6 tham số gồm `p_location_id` (migration 005 — đã chạy thủ công trên Supabase Dashboard)
+- FEFO filter theo `location_id` — xuất từng kho riêng biệt
+- Migration naming: dùng prefix 001-005, chạy thủ công qua Dashboard (chưa dùng `supabase db push` do naming không phải timestamp format)
