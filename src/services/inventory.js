@@ -238,3 +238,67 @@ export async function getTransactionDetails(transaction_id) {
     location_to_name: d.to_loc?.warehouse_name ?? null,
   }))
 }
+
+/**
+ * Số liệu tổng quan cho Dashboard. Tính từ inventory_stock_level (chỉ dòng còn
+ * tồn > 0) JOIN batches.
+ * Trả về: total_products, total_batches, expiring_7days, expiring_45days,
+ *         total_stock_value.
+ */
+export async function getDashboardStats() {
+  const { data, error } = await supabase
+    .from('inventory_stock_level')
+    .select(
+      `
+      batch_id,
+      current_quantity,
+      batches:batch_id ( product_id, expiry_date, unit_cost )
+    `
+    )
+    .gt('current_quantity', 0)
+  if (error) throw error
+
+  const todayMs = (() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    return d.getTime()
+  })()
+  const daysUntil = (dateStr) => {
+    if (!dateStr) return null
+    const d = new Date(dateStr)
+    d.setHours(0, 0, 0, 0)
+    return Math.round((d.getTime() - todayMs) / 86400000)
+  }
+
+  const products = new Set()
+  const batches = new Set()
+  const batches7 = new Set()
+  const batches45 = new Set()
+  let totalValue = 0
+
+  for (const r of data ?? []) {
+    const b = r.batches
+    if (b?.product_id) products.add(b.product_id)
+    batches.add(r.batch_id)
+    totalValue += (Number(r.current_quantity) || 0) * (Number(b?.unit_cost) || 0)
+    const d = daysUntil(b?.expiry_date)
+    if (d !== null && d <= 7) batches7.add(r.batch_id)
+    if (d !== null && d <= 45) batches45.add(r.batch_id)
+  }
+
+  return {
+    total_products: products.size,
+    total_batches: batches.size,
+    expiring_7days: batches7.size,
+    expiring_45days: batches45.size,
+    total_stock_value: totalValue,
+  }
+}
+
+/**
+ * 5 (mặc định) giao dịch gần nhất — dùng lại getTransactions, không filter.
+ */
+export async function getRecentTransactions(limit = 5) {
+  const all = await getTransactions({})
+  return all.slice(0, limit)
+}

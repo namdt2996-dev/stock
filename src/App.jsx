@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
 import Login from './pages/Login'
+import Dashboard from './pages/Dashboard'
 import MasterData from './pages/MasterData'
 import InboundReceipt from './pages/InboundReceipt'
 import StockLevel from './pages/StockLevel'
@@ -9,7 +10,7 @@ import TransactionHistory from './pages/TransactionHistory'
 
 function App() {
   const [session, setSession] = useState(null)
-  const [page, setPage] = useState('masterData')
+  const [page, setPage] = useState('dashboard')
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -44,6 +45,7 @@ function App() {
     <div className="min-h-screen bg-gray-50">
       <header className="no-print flex items-center justify-between border-b border-gray-200 bg-white px-6 py-3">
         <nav className="flex items-center gap-4">
+          {navLink('dashboard', 'Dashboard')}
           {navLink('masterData', 'Master Data')}
           {navLink('inbound', 'Nhập kho')}
           {navLink('stock', 'Tồn kho')}
@@ -63,6 +65,7 @@ function App() {
       </header>
 
       <main>
+        {page === 'dashboard' && <Dashboard onNavigate={setPage} />}
         {page === 'masterData' && <MasterData />}
         {page === 'inbound' && <InboundReceipt />}
         {page === 'stock' && <StockLevel />}
