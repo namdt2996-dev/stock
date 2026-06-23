@@ -260,7 +260,7 @@ function TransactionHistory() {
                       r.transaction_type === 'ADJUST'
                         ? r.total_value < 0
                           ? 'text-red-600'
-                          : 'text-orange-600'
+                          : 'text-green-600'
                         : 'text-gray-800'
                     }`}
                   >
