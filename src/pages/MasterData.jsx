@@ -88,7 +88,13 @@ const btnClass =
 // ---------- Products ----------
 function ProductsTab() {
   const [rows, setRows] = useState([])
-  const [form, setForm] = useState({ name: '', sku: '', unit_of_measure: '' })
+  const [form, setForm] = useState({
+    name: '',
+    sku: '',
+    unit_of_measure: '',
+    pack_unit: '',
+    conversion_factor: '',
+  })
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
 
@@ -108,8 +114,19 @@ function ProductsTab() {
     setError(null)
     setSaving(true)
     try {
-      await createProduct(form)
-      setForm({ name: '', sku: '', unit_of_measure: '' })
+      await createProduct({
+        ...form,
+        conversion_factor: form.conversion_factor
+          ? Number(form.conversion_factor)
+          : undefined,
+      })
+      setForm({
+        name: '',
+        sku: '',
+        unit_of_measure: '',
+        pack_unit: '',
+        conversion_factor: '',
+      })
       await load()
     } catch (e) {
       setError(e.message)
@@ -124,8 +141,14 @@ function ProductsTab() {
           { key: 'name', label: 'Tên' },
           { key: 'sku', label: 'SKU' },
           { key: 'unit_of_measure', label: 'ĐVT' },
+          { key: 'pack_display', label: 'Đóng gói' },
         ]}
-        rows={rows}
+        rows={rows.map((r) => ({
+          ...r,
+          pack_display: r.pack_unit
+            ? `${r.pack_unit}/${r.conversion_factor ?? 1}`
+            : '',
+        }))}
       />
       <form onSubmit={handleAdd} className="flex flex-wrap gap-2 items-end">
         <input
@@ -148,6 +171,24 @@ function ProductsTab() {
           value={form.unit_of_measure}
           onChange={(e) => setForm({ ...form, unit_of_measure: e.target.value })}
         />
+        <input
+          className={inputClass}
+          placeholder="VD: thùng, két, hộp"
+          value={form.pack_unit}
+          onChange={(e) => setForm({ ...form, pack_unit: e.target.value })}
+        />
+        {form.pack_unit && (
+          <input
+            type="number"
+            min="1"
+            className={inputClass}
+            placeholder="VD: 12 (1 thùng = 12 lon)"
+            value={form.conversion_factor}
+            onChange={(e) =>
+              setForm({ ...form, conversion_factor: e.target.value })
+            }
+          />
+        )}
         <button className={btnClass} disabled={saving}>
           {saving ? 'Đang lưu…' : 'Thêm'}
         </button>

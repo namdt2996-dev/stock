@@ -1,0 +1,277 @@
+import { useEffect, useState } from 'react'
+import { getLocations } from '../services/masterData'
+import { getStockForTake, createStockAdjustment } from '../services/stockTake'
+
+const today = () => new Date().toISOString().slice(0, 10)
+const fmt = (n) => (n == null ? '' : Number(n).toLocaleString('vi-VN'))
+
+const inputClass =
+  'border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-500'
+
+// Sản phẩm có đóng gói nhiều cấp không?
+const hasPack = (r) => !!r.pack_unit && (Number(r.conversion_factor) || 1) > 1
+
+function StockTake() {
+  const [locations, setLocations] = useState([])
+  const [locationId, setLocationId] = useState('')
+  const [date, setDate] = useState(today())
+
+  const [rows, setRows] = useState([])
+  const [entries, setEntries] = useState({}) // product_id -> { packs, loose }
+
+  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
+  const [showToast, setShowToast] = useState(false)
+
+  useEffect(() => {
+    getLocations()
+      .then(setLocations)
+      .catch((e) => setError(e.message))
+  }, [])
+
+  useEffect(() => {
+    if (!showToast) return
+    const t = setTimeout(() => setShowToast(false), 15000)
+    return () => clearTimeout(t)
+  }, [showToast])
+
+  async function loadStock(locId) {
+    if (!locId) {
+      setRows([])
+      setEntries({})
+      return
+    }
+    setLoading(true)
+    setError(null)
+    try {
+      setRows(await getStockForTake(locId))
+      setEntries({})
+    } catch (e) {
+      setError(e.message)
+    }
+    setLoading(false)
+  }
+
+  function handleLocationChange(locId) {
+    setLocationId(locId)
+    loadStock(locId)
+  }
+
+  function setEntry(productId, field, value) {
+    setEntries((prev) => ({
+      ...prev,
+      [productId]: { ...prev[productId], [field]: value },
+    }))
+  }
+
+  // Tính số thực tế + cờ "đã nhập" cho 1 dòng
+  function computeRow(r) {
+    const e = entries[r.product_id] || {}
+    const cf = Number(r.conversion_factor) || 1
+    const packs = e.packs === '' || e.packs == null ? null : Number(e.packs)
+    const loose = e.loose === '' || e.loose == null ? null : Number(e.loose)
+
+    let entered, actual
+    if (hasPack(r)) {
+      entered = packs != null || loose != null
+      actual = (packs || 0) * cf + (loose || 0)
+    } else {
+      entered = loose != null
+      actual = loose || 0
+    }
+    const diff = actual - r.system_quantity
+    return { entered, actual, diff }
+  }
+
+  const computed = rows.map((r) => ({ row: r, ...computeRow(r) }))
+  const matchedCount = computed.filter((c) => c.entered && c.diff === 0).length
+  const diffCount = computed.filter((c) => c.entered && c.diff !== 0).length
+
+  async function handleSave() {
+    setError(null)
+    const items = computed
+      .filter((c) => c.entered && c.diff !== 0)
+      .map((c) => ({
+        product_id: c.row.product_id,
+        actual_quantity: c.actual,
+        note: null,
+      }))
+    if (items.length === 0) return
+
+    setSaving(true)
+    try {
+      await createStockAdjustment(locationId, date, items)
+      setShowToast(true)
+      await loadStock(locationId) // tải lại tồn mới + reset nhập
+    } catch (e) {
+      setError(e.message)
+    }
+    setSaving(false)
+  }
+
+  const diffColor = (diff) =>
+    diff === 0 ? 'text-green-600' : diff < 0 ? 'text-red-600' : 'text-orange-600'
+
+  return (
+    <div className="max-w-5xl mx-auto p-6">
+      {showToast && (
+        <div className="no-print fixed top-4 right-4 z-50 bg-green-600 text-white text-sm font-medium px-4 py-3 rounded shadow-lg">
+          ✓ Đã lưu phiếu kiểm kho thành công!
+        </div>
+      )}
+
+      <h2 className="text-xl font-bold text-gray-800 mb-4">Kiểm kho</h2>
+
+      {/* HEADER */}
+      <div className="flex flex-wrap items-end gap-4 bg-white border border-gray-200 rounded p-4 mb-4">
+        <label className="flex flex-col text-sm text-gray-600">
+          <span>Kho <span className="text-red-500 text-xs">*</span></span>
+          <select
+            className={inputClass}
+            value={locationId}
+            onChange={(e) => handleLocationChange(e.target.value)}
+          >
+            <option value="">-- Chọn kho --</option>
+            {locations.map((l) => (
+              <option key={l.location_id} value={l.location_id}>
+                {l.warehouse_name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex flex-col text-sm text-gray-600">
+          Ngày kiểm
+          <input
+            type="date"
+            className={inputClass}
+            value={date}
+            max={today()}
+            onChange={(e) => setDate(e.target.value)}
+          />
+        </label>
+      </div>
+
+      {error && <p className="text-red-600 text-sm mb-3">Lỗi: {error}</p>}
+
+      {!locationId ? (
+        <p className="text-gray-500 text-sm">Chọn kho để bắt đầu kiểm kho.</p>
+      ) : (
+        <>
+          <div className="bg-white border border-gray-200 rounded overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 text-gray-600">
+                <tr>
+                  <th className="text-left px-3 py-2">Sản phẩm</th>
+                  <th className="text-left px-3 py-2">ĐVT</th>
+                  <th className="text-right px-3 py-2">Tồn hệ thống</th>
+                  <th className="text-left px-3 py-2">Nhập thực tế</th>
+                  <th className="text-right px-3 py-2">Chênh lệch</th>
+                </tr>
+              </thead>
+              <tbody>
+                {computed.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-3 py-4 text-center text-gray-400">
+                      {loading ? 'Đang tải…' : 'Kho này không có tồn'}
+                    </td>
+                  </tr>
+                ) : (
+                  computed.map(({ row: r, entered, actual, diff }) => {
+                    const e = entries[r.product_id] || {}
+                    const cf = Number(r.conversion_factor) || 1
+                    return (
+                      <tr key={r.product_id} className="border-t border-gray-100">
+                        <td className="px-3 py-2 text-gray-800">{r.name}</td>
+                        <td className="px-3 py-2 text-gray-600">{r.unit_of_measure}</td>
+                        <td className="px-3 py-2 text-right text-gray-700">
+                          {fmt(r.system_quantity)}
+                        </td>
+                        <td className="px-3 py-2">
+                          {hasPack(r) ? (
+                            <div>
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  className={`${inputClass} w-16 text-right`}
+                                  value={e.packs ?? ''}
+                                  onChange={(ev) =>
+                                    setEntry(r.product_id, 'packs', ev.target.value)
+                                  }
+                                />
+                                <span className="text-gray-500">{r.pack_unit}</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  className={`${inputClass} w-16 text-right`}
+                                  value={e.loose ?? ''}
+                                  onChange={(ev) =>
+                                    setEntry(r.product_id, 'loose', ev.target.value)
+                                  }
+                                />
+                                <span className="text-gray-500">{r.unit_of_measure}</span>
+                              </div>
+                              {entered && (
+                                <div className="text-xs text-gray-400 mt-0.5">
+                                  = {fmt(actual)} {r.unit_of_measure}
+                                  <span className="ml-1">(1 {r.pack_unit} = {cf})</span>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <input
+                              type="number"
+                              min="0"
+                              className={`${inputClass} w-28 text-right`}
+                              value={e.loose ?? ''}
+                              onChange={(ev) =>
+                                setEntry(r.product_id, 'loose', ev.target.value)
+                              }
+                            />
+                          )}
+                        </td>
+                        <td className={`px-3 py-2 text-right font-medium ${entered ? diffColor(diff) : 'text-gray-400'}`}>
+                          {entered ? (diff > 0 ? `+${fmt(diff)}` : fmt(diff)) : '—'}
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* SUMMARY + ACTIONS */}
+          <div className="flex items-center gap-4 mt-4">
+            <span className="text-sm text-gray-600">
+              <span className="text-green-700 font-medium">{matchedCount}</span> khớp /{' '}
+              <span className="text-orange-700 font-medium">{diffCount}</span> lệch
+            </span>
+            {diffCount > 0 ? (
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="bg-green-600 text-white text-sm font-medium px-5 py-2 rounded hover:bg-green-700 disabled:opacity-50"
+              >
+                {saving ? 'Đang lưu…' : 'Xác nhận kiểm kho'}
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="bg-gray-200 text-gray-500 text-sm font-medium px-5 py-2 rounded cursor-not-allowed"
+              >
+                Tất cả khớp ✓
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+export default StockTake

@@ -10,10 +10,22 @@ export async function getProducts() {
   return data ?? []
 }
 
-export async function createProduct({ name, sku, unit_of_measure }) {
+export async function createProduct({
+  name,
+  sku,
+  unit_of_measure,
+  pack_unit,
+  conversion_factor,
+}) {
   const { data, error } = await supabase
     .from('products')
-    .insert({ name, sku, unit_of_measure })
+    .insert({
+      name,
+      sku,
+      unit_of_measure,
+      pack_unit: pack_unit || null,
+      conversion_factor: pack_unit ? conversion_factor || 1 : null,
+    })
     .select()
     .single()
   if (error) throw error

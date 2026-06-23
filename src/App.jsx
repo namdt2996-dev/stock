@@ -6,6 +6,7 @@ import MasterData from './pages/MasterData'
 import InboundReceipt from './pages/InboundReceipt'
 import StockLevel from './pages/StockLevel'
 import OutboundReceipt from './pages/OutboundReceipt'
+import StockTake from './pages/StockTake'
 import TransactionHistory from './pages/TransactionHistory'
 
 function App() {
@@ -50,6 +51,7 @@ function App() {
           {navLink('inbound', 'Nhập kho')}
           {navLink('stock', 'Tồn kho')}
           {navLink('outbound', 'Xuất hàng')}
+          {navLink('stockTake', 'Kiểm kho')}
           {navLink('history', 'Lịch sử')}
         </nav>
         <div className="flex items-center gap-3">
@@ -70,6 +72,7 @@ function App() {
         {page === 'inbound' && <InboundReceipt />}
         {page === 'stock' && <StockLevel />}
         {page === 'outbound' && <OutboundReceipt />}
+        {page === 'stockTake' && <StockTake />}
         {page === 'history' && <TransactionHistory />}
       </main>
     </div>
