@@ -4,11 +4,12 @@ import { getStockForTake, createStockAdjustment } from '../services/stockTake'
 
 const today = () => new Date().toISOString().slice(0, 10)
 const fmt = (n) => (n == null ? '' : Number(n).toLocaleString('vi-VN'))
+const fmtDate = (d) => (d ? String(d).slice(0, 10) : '—')
 
 const inputClass =
   'border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-500'
 
-// Sản phẩm có đóng gói nhiều cấp không?
+// Lô thuộc sản phẩm có đóng gói nhiều cấp không?
 const hasPack = (r) => !!r.pack_unit && (Number(r.conversion_factor) || 1) > 1
 
 function StockTake() {
@@ -17,7 +18,7 @@ function StockTake() {
   const [date, setDate] = useState(today())
 
   const [rows, setRows] = useState([])
-  const [entries, setEntries] = useState({}) // product_id -> { packs, loose }
+  const [entries, setEntries] = useState({}) // stock_id -> { packs, loose }
 
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -58,16 +59,16 @@ function StockTake() {
     loadStock(locId)
   }
 
-  function setEntry(productId, field, value) {
+  function setEntry(stockId, field, value) {
     setEntries((prev) => ({
       ...prev,
-      [productId]: { ...prev[productId], [field]: value },
+      [stockId]: { ...prev[stockId], [field]: value },
     }))
   }
 
-  // Tính số thực tế + cờ "đã nhập" cho 1 dòng
+  // Tính số thực tế + cờ "đã nhập" cho 1 lô
   function computeRow(r) {
-    const e = entries[r.product_id] || {}
+    const e = entries[r.stock_id] || {}
     const cf = Number(r.conversion_factor) || 1
     const packs = e.packs === '' || e.packs == null ? null : Number(e.packs)
     const loose = e.loose === '' || e.loose == null ? null : Number(e.loose)
@@ -93,9 +94,9 @@ function StockTake() {
     const items = computed
       .filter((c) => c.entered && c.diff !== 0)
       .map((c) => ({
-        product_id: c.row.product_id,
+        batch_id: c.row.batch_id,
+        stock_id: c.row.stock_id,
         actual_quantity: c.actual,
-        note: null,
       }))
     if (items.length === 0) return
 
@@ -114,7 +115,7 @@ function StockTake() {
     diff === 0 ? 'text-green-600' : diff < 0 ? 'text-red-600' : 'text-orange-600'
 
   return (
-    <div className="max-w-5xl mx-auto p-6">
+    <div className="max-w-6xl mx-auto p-6">
       {showToast && (
         <div className="no-print fixed top-4 right-4 z-50 bg-green-600 text-white text-sm font-medium px-4 py-3 rounded shadow-lg">
           ✓ Đã lưu phiếu kiểm kho thành công!
@@ -164,6 +165,8 @@ function StockTake() {
               <thead className="bg-gray-50 text-gray-600">
                 <tr>
                   <th className="text-left px-3 py-2">Sản phẩm</th>
+                  <th className="text-left px-3 py-2">Số lô</th>
+                  <th className="text-left px-3 py-2">Hạn dùng</th>
                   <th className="text-left px-3 py-2">ĐVT</th>
                   <th className="text-right px-3 py-2">Tồn hệ thống</th>
                   <th className="text-left px-3 py-2">Nhập thực tế</th>
@@ -173,17 +176,25 @@ function StockTake() {
               <tbody>
                 {computed.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-3 py-4 text-center text-gray-400">
+                    <td colSpan={7} className="px-3 py-4 text-center text-gray-400">
                       {loading ? 'Đang tải…' : 'Kho này không có tồn'}
                     </td>
                   </tr>
                 ) : (
-                  computed.map(({ row: r, entered, actual, diff }) => {
-                    const e = entries[r.product_id] || {}
+                  computed.map(({ row: r, entered, actual, diff }, idx) => {
+                    const e = entries[r.stock_id] || {}
                     const cf = Number(r.conversion_factor) || 1
+                    // Hiện tên sản phẩm chỉ ở dòng đầu của nhóm
+                    const firstOfGroup =
+                      idx === 0 ||
+                      computed[idx - 1].row.product_id !== r.product_id
                     return (
-                      <tr key={r.product_id} className="border-t border-gray-100">
-                        <td className="px-3 py-2 text-gray-800">{r.name}</td>
+                      <tr key={r.stock_id} className="border-t border-gray-100">
+                        <td className="px-3 py-2 text-gray-800">
+                          {firstOfGroup ? r.product_name : ''}
+                        </td>
+                        <td className="px-3 py-2 text-gray-600">{r.lot_number}</td>
+                        <td className="px-3 py-2 text-gray-600">{fmtDate(r.expiry_date)}</td>
                         <td className="px-3 py-2 text-gray-600">{r.unit_of_measure}</td>
                         <td className="px-3 py-2 text-right text-gray-700">
                           {fmt(r.system_quantity)}
@@ -198,7 +209,7 @@ function StockTake() {
                                   className={`${inputClass} w-16 text-right`}
                                   value={e.packs ?? ''}
                                   onChange={(ev) =>
-                                    setEntry(r.product_id, 'packs', ev.target.value)
+                                    setEntry(r.stock_id, 'packs', ev.target.value)
                                   }
                                 />
                                 <span className="text-gray-500">{r.pack_unit}</span>
@@ -208,7 +219,7 @@ function StockTake() {
                                   className={`${inputClass} w-16 text-right`}
                                   value={e.loose ?? ''}
                                   onChange={(ev) =>
-                                    setEntry(r.product_id, 'loose', ev.target.value)
+                                    setEntry(r.stock_id, 'loose', ev.target.value)
                                   }
                                 />
                                 <span className="text-gray-500">{r.unit_of_measure}</span>
@@ -227,7 +238,7 @@ function StockTake() {
                               className={`${inputClass} w-28 text-right`}
                               value={e.loose ?? ''}
                               onChange={(ev) =>
-                                setEntry(r.product_id, 'loose', ev.target.value)
+                                setEntry(r.stock_id, 'loose', ev.target.value)
                               }
                             />
                           )}
