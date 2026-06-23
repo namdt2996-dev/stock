@@ -1,6 +1,19 @@
 import { useEffect, useState } from 'react'
 import { getStockLevels } from '../services/inventory'
 import { getLocations } from '../services/masterData'
+import { exportToCsv } from '../utils/exportCsv'
+
+// Bỏ dấu tiếng Việt + slug hóa cho tên file
+function slug(s) {
+  return (s || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
 
 // Số ngày còn lại tới hạn dùng (null nếu không có expiry_date)
 function daysUntil(dateStr) {
@@ -60,6 +73,26 @@ function StockLevel() {
     (l) => l.location_id === locationId
   )?.warehouse_name
 
+  function handleExport() {
+    const headers = [
+      'Sản phẩm', 'SKU', 'ĐVT', 'Số lô', 'Hạn dùng',
+      'Tồn kho', 'Kho', 'Ngày nhập',
+    ]
+    const data = rows.map((r) => [
+      r.product_name,
+      r.sku,
+      r.unit_of_measure,
+      r.lot_number,
+      r.expiry_date ?? '',
+      r.current_quantity,
+      r.warehouse_name,
+      r.received_date ?? '',
+    ])
+    const khoSlug = allLocations ? 'tat-ca' : slug(currentWarehouse)
+    const date = new Date().toISOString().slice(0, 10)
+    exportToCsv(`ton-kho-${khoSlug}-${date}.csv`, headers, data)
+  }
+
   const redCount = rows.filter((r) => expiryLevel(r.expiry_date) === 'red').length
   const orangeCount = rows.filter(
     (r) => expiryLevel(r.expiry_date) === 'orange'
@@ -94,6 +127,14 @@ function StockLevel() {
             className="bg-gray-700 text-white text-sm font-medium px-4 py-1.5 rounded hover:bg-gray-800 disabled:opacity-50"
           >
             {loading ? 'Đang tải…' : '↻ Làm mới'}
+          </button>
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={rows.length === 0}
+            className="no-print bg-green-600 text-white text-sm font-medium px-4 py-1.5 rounded hover:bg-green-700 disabled:opacity-50"
+          >
+            Xuất CSV
           </button>
         </div>
       </div>

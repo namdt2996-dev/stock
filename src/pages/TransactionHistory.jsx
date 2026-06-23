@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getProducts } from '../services/masterData'
 import { getTransactions, getTransactionDetails } from '../services/inventory'
+import { exportToCsv } from '../utils/exportCsv'
 
 const EXIT_REASON_LABELS = {
   PROCESSING: 'Xuất bếp',
@@ -88,6 +89,29 @@ function TransactionHistory() {
     0
   )
 
+  const typeLabel = (t) =>
+    t === 'IN' ? 'Nhập kho' : t === 'OUT' ? 'Xuất hàng' : t
+
+  function handleExport() {
+    const headers = [
+      'Ngày', 'Loại', 'Lý do xuất', 'Đối tác',
+      'Số phiếu tham chiếu', 'Số dòng', 'Tổng giá trị',
+    ]
+    const data = rows.map((r) => [
+      fmtDate(r.transaction_date),
+      typeLabel(r.transaction_type),
+      r.transaction_type === 'OUT'
+        ? EXIT_REASON_LABELS[r.exit_reason_code] || r.exit_reason_code || ''
+        : '',
+      r.partner_name || '',
+      r.reference_doc || '',
+      r.line_count,
+      r.total_value,
+    ])
+    const date = new Date().toISOString().slice(0, 10)
+    exportToCsv(`lich-su-giao-dich-${date}.csv`, headers, data)
+  }
+
   return (
     <div className="max-w-6xl mx-auto p-6">
       <h2 className="text-xl font-bold text-gray-800 mb-4">Lịch sử giao dịch</h2>
@@ -158,6 +182,14 @@ function TransactionHistory() {
           className="bg-green-600 text-white text-sm font-medium px-5 py-2 rounded hover:bg-green-700 disabled:opacity-50"
         >
           {loading ? 'Đang tìm…' : 'Tìm kiếm'}
+        </button>
+        <button
+          type="button"
+          onClick={handleExport}
+          disabled={rows.length === 0}
+          className="no-print bg-gray-700 text-white text-sm font-medium px-5 py-2 rounded hover:bg-gray-800 disabled:opacity-50"
+        >
+          Xuất CSV
         </button>
       </div>
 
