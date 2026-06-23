@@ -370,7 +370,10 @@ function Group({ group, children }) {
   return (
     <>
       <tr style={{ background: 'var(--color-background-secondary, #f3f4f6)' }}>
-        <td colSpan={6} className="px-3 py-1.5 text-xs font-medium text-gray-500">
+        <td
+          colSpan={6}
+          className="px-3 py-1.5 text-left text-sm font-semibold text-gray-800 dark:text-gray-200"
+        >
           {group.product_name}
           {group.sku ? ` — ${group.sku}` : ''}
         </td>
