@@ -115,11 +115,23 @@ function ProductsTab() {
 
   async function handleToggle(product_id, current) {
     setError(null)
+    const next = !current
+    // Cập nhật realtime (optimistic) — không reload trang
+    setRows((prev) =>
+      prev.map((r) =>
+        r.product_id === product_id ? { ...r, is_active: next } : r
+      )
+    )
     try {
-      await toggleProductActive(product_id, !current)
-      await load()
+      await toggleProductActive(product_id, next)
     } catch (e) {
       setError(e.message)
+      // revert nếu lỗi
+      setRows((prev) =>
+        prev.map((r) =>
+          r.product_id === product_id ? { ...r, is_active: current } : r
+        )
+      )
     }
   }
 
@@ -177,35 +189,69 @@ function ProductsTab() {
           </button>
         ))}
       </div>
-      <Table
-        columns={[
-          { key: 'name', label: 'Tên' },
-          { key: 'sku', label: 'SKU' },
-          { key: 'unit_of_measure', label: 'ĐVT' },
-          { key: 'pack_display', label: 'Đóng gói' },
-          { key: 'status_cell', label: 'Trạng thái' },
-        ]}
-        rows={visibleRows.map((r) => ({
-          ...r,
-          pack_display: r.pack_unit
-            ? `${r.pack_unit}/${r.conversion_factor ?? 1}`
-            : '',
-          status_cell: (
-            <button
-              type="button"
-              onClick={() => handleToggle(r.product_id, r.is_active !== false)}
-              className={`px-2 py-0.5 rounded text-xs font-medium ${
-                r.is_active !== false
-                  ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                  : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-              }`}
-              title="Bấm để đổi trạng thái"
-            >
-              {r.is_active !== false ? 'Đang dùng' : 'Ngừng dùng'}
-            </button>
-          ),
-        }))}
-      />
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm border border-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="text-left px-3 py-2 font-medium text-gray-600">Tên sản phẩm</th>
+              <th className="text-left px-3 py-2 font-medium text-gray-600">SKU</th>
+              <th className="text-left px-3 py-2 font-medium text-gray-600">ĐVT</th>
+              <th className="text-left px-3 py-2 font-medium text-gray-600">Đơn vị đóng gói</th>
+              <th className="text-left px-3 py-2 font-medium text-gray-600">Trạng thái</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visibleRows.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-3 py-3 text-center text-gray-400">
+                  Chưa có dữ liệu
+                </td>
+              </tr>
+            ) : (
+              visibleRows.map((r) => {
+                const active = r.is_active !== false
+                return (
+                  <tr key={r.product_id} className="border-t border-gray-100">
+                    <td className="px-3 py-2 text-gray-800">{r.name}</td>
+                    <td className="px-3 py-2 text-gray-600">{r.sku}</td>
+                    <td className="px-3 py-2 text-gray-600">{r.unit_of_measure}</td>
+                    <td className="px-3 py-2 text-gray-600">
+                      {r.pack_unit ? `${r.pack_unit}/${r.conversion_factor ?? 1}` : '—'}
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={active}
+                          onClick={() => handleToggle(r.product_id, active)}
+                          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
+                            active ? 'bg-green-600' : 'bg-gray-300'
+                          }`}
+                          title="Bấm để đổi trạng thái"
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                              active ? 'translate-x-4' : 'translate-x-0.5'
+                            }`}
+                          />
+                        </button>
+                        <span
+                          className={`text-xs ${
+                            active ? 'text-green-700' : 'text-gray-500'
+                          }`}
+                        >
+                          {active ? 'Đang dùng' : 'Ngừng dùng'}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
       <form onSubmit={handleAdd} className="flex flex-wrap gap-2 items-end">
         <input
           className={inputClass}
