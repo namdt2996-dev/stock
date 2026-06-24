@@ -1,8 +1,9 @@
-import html2canvas from 'html2canvas'
-import { jsPDF } from 'jspdf'
+// html2canvas & jsPDF được nạp động (dynamic import) — chỉ tải khi người dùng
+// bấm xuất, không làm chậm tốc độ load trang đầu.
 
 // Capture một element theo id thành canvas (scale 2 cho nét).
 async function captureCanvas(elementId) {
+  const html2canvas = (await import('html2canvas')).default
   const el = document.getElementById(elementId)
   if (!el) throw new Error(`Không tìm thấy element #${elementId} để xuất.`)
   return html2canvas(el, {
@@ -29,6 +30,7 @@ export async function exportAsImage(elementId, filename) {
 
 // Xuất element ra PDF (A4 dọc, ảnh canvas fit theo chiều rộng trang).
 export async function exportAsPDF(elementId, filename) {
+  const { jsPDF } = await import('jspdf')
   const canvas = await captureCanvas(elementId)
   const imgData = canvas.toDataURL('image/png')
 
