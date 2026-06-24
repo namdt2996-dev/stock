@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   getProducts,
   createProduct,
+  toggleProductActive,
   getPartners,
   createPartner,
   getLocations,
@@ -99,10 +100,11 @@ function ProductsTab() {
   })
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [statusFilter, setStatusFilter] = useState('active') // active | inactive | all
 
   async function load() {
     try {
-      setRows(await getProducts())
+      setRows(await getProducts(false)) // lấy tất cả, lọc client-side
     } catch (e) {
       setError(e.message)
     }
@@ -110,6 +112,22 @@ function ProductsTab() {
   useEffect(() => {
     load()
   }, [])
+
+  async function handleToggle(product_id, current) {
+    setError(null)
+    try {
+      await toggleProductActive(product_id, !current)
+      await load()
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+
+  const visibleRows = rows.filter((r) => {
+    if (statusFilter === 'active') return r.is_active !== false
+    if (statusFilter === 'inactive') return r.is_active === false
+    return true
+  })
 
   async function handleAdd(e) {
     e.preventDefault()
@@ -138,18 +156,54 @@ function ProductsTab() {
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center gap-2 text-sm">
+        <span className="text-gray-500">Trạng thái:</span>
+        {[
+          { v: 'active', l: 'Đang dùng' },
+          { v: 'inactive', l: 'Ngừng dùng' },
+          { v: 'all', l: 'Tất cả' },
+        ].map((o) => (
+          <button
+            key={o.v}
+            type="button"
+            onClick={() => setStatusFilter(o.v)}
+            className={`px-2 py-1 rounded ${
+              statusFilter === o.v
+                ? 'bg-green-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {o.l}
+          </button>
+        ))}
+      </div>
       <Table
         columns={[
           { key: 'name', label: 'Tên' },
           { key: 'sku', label: 'SKU' },
           { key: 'unit_of_measure', label: 'ĐVT' },
           { key: 'pack_display', label: 'Đóng gói' },
+          { key: 'status_cell', label: 'Trạng thái' },
         ]}
-        rows={rows.map((r) => ({
+        rows={visibleRows.map((r) => ({
           ...r,
           pack_display: r.pack_unit
             ? `${r.pack_unit}/${r.conversion_factor ?? 1}`
             : '',
+          status_cell: (
+            <button
+              type="button"
+              onClick={() => handleToggle(r.product_id, r.is_active !== false)}
+              className={`px-2 py-0.5 rounded text-xs font-medium ${
+                r.is_active !== false
+                  ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                  : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+              }`}
+              title="Bấm để đổi trạng thái"
+            >
+              {r.is_active !== false ? 'Đang dùng' : 'Ngừng dùng'}
+            </button>
+          ),
         }))}
       />
       <form onSubmit={handleAdd} className="flex flex-wrap gap-2 items-end">

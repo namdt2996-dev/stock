@@ -70,7 +70,7 @@ export async function getProductsByLocation(location_id) {
       `
       current_quantity,
       batches:batch_id (
-        products:product_id ( product_id, name, unit_of_measure )
+        products:product_id ( product_id, name, unit_of_measure, is_active )
       )
     `
     )
@@ -78,11 +78,11 @@ export async function getProductsByLocation(location_id) {
     .gt('current_quantity', 0)
   if (error) throw error
 
-  // Gộp distinct theo product_id
+  // Gộp distinct theo product_id; bỏ sản phẩm đã ngừng dùng (is_active = false)
   const map = new Map()
   for (const r of data ?? []) {
     const p = r.batches?.products
-    if (p && !map.has(p.product_id)) {
+    if (p && p.is_active !== false && !map.has(p.product_id)) {
       map.set(p.product_id, {
         product_id: p.product_id,
         name: p.name,

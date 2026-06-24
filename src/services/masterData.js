@@ -1,13 +1,28 @@
 import { supabase } from '../lib/supabase'
 
 // ---------- Products ----------
-export async function getProducts() {
-  const { data, error } = await supabase
+// activeOnly=true (mặc định): chỉ sản phẩm đang dùng (is_active = true).
+// activeOnly=false: tất cả (dùng cho trang Master Data).
+export async function getProducts(activeOnly = true) {
+  let query = supabase
     .from('products')
     .select('*')
     .order('name', { ascending: true })
+  if (activeOnly) query = query.eq('is_active', true)
+  const { data, error } = await query
   if (error) throw error
   return data ?? []
+}
+
+export async function toggleProductActive(product_id, is_active) {
+  const { data, error } = await supabase
+    .from('products')
+    .update({ is_active })
+    .eq('product_id', product_id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
 }
 
 export async function createProduct({
