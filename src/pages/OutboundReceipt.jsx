@@ -225,7 +225,9 @@ function OutboundReceipt() {
         </label>
 
         <label className="flex flex-col text-sm text-gray-600">
-          Đối tác {isSale && <span className="text-red-500">*</span>}
+          <span>
+            Đối tác {isSale && <span className="text-red-500 text-xs">*</span>}
+          </span>
           <select
             className={inputClass}
             value={header.partner_id}

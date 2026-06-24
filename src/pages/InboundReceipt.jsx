@@ -197,10 +197,12 @@ function InboundReceipt() {
         </label>
 
         <label className="flex flex-col text-sm text-gray-600">
-          Nhà cung cấp{' '}
-          {header.entry_reason_code === 'PURCHASE' && (
-            <span className="text-red-500 text-xs">*</span>
-          )}
+          <span>
+            Nhà cung cấp{' '}
+            {header.entry_reason_code === 'PURCHASE' && (
+              <span className="text-red-500 text-xs">*</span>
+            )}
+          </span>
           <select
             className={inputClass}
             value={header.partner_id}
