@@ -70,19 +70,30 @@ function App() {
   )
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="no-print flex items-center justify-between border-b border-gray-200 bg-white px-3 sm:px-6 py-3">
+    <div className="min-h-screen" style={{ background: '#f8fafc' }}>
+      <header
+        className="no-print flex items-center justify-between px-3 sm:px-6 py-3"
+        style={{
+          background: 'linear-gradient(90deg, #f0fdf4 0%, #f0f9ff 100%)',
+          borderBottom: '1px solid #e2e8f0',
+        }}
+      >
         {/* Desktop nav — ẩn dưới sm */}
-        <nav className="hidden sm:flex items-center gap-4">
+        <nav className="hidden sm:flex items-center gap-1">
           {NAV.map((n) => (
             <button
               key={n.key}
               onClick={() => setPage(n.key)}
-              className={`text-sm font-medium ${
+              className="text-sm font-medium px-3 py-1.5 rounded-md transition-colors hover:bg-white/60"
+              style={
                 page === n.key
-                  ? 'text-green-700'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
+                  ? {
+                      background: '#ffffff',
+                      color: '#15803d',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+                    }
+                  : { color: '#374151' }
+              }
             >
               {n.label}
             </button>

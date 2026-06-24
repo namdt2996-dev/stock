@@ -178,7 +178,7 @@ function OutboundReceipt() {
 
       {/* FORM nhập liệu — ẩn khi in */}
       <div className="no-print">
-      <h2 className="text-xl font-bold text-gray-800 mb-4">Phiếu xuất kho</h2>
+      <h2 className="text-xl font-semibold text-gray-900 mb-4">Phiếu xuất kho</h2>
 
       {/* HEADER — 5 field trên 1 grid: mobile 1 cột, sm 2 cột, lg 5 cột */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 bg-white border border-gray-200 rounded p-4 mb-4">

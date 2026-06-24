@@ -25,6 +25,26 @@ const TYPE_OPTIONS = [
   { key: 'ADJUST', label: 'Điều chỉnh', type: 'ADJUST' },
 ]
 
+// Màu badge theo loại phiếu (palette nhất quán)
+const TYPE_BADGE = {
+  IN: { bg: '#dcfce7', color: '#15803d', label: 'Nhập kho' },
+  OUT: { bg: '#fee2e2', color: '#dc2626', label: 'Xuất hàng' },
+  TRANSFER: { bg: '#dbeafe', color: '#1d4ed8', label: 'Chuyển kho' },
+  ADJUST: { bg: '#f3f4f6', color: '#374151', label: 'Điều chỉnh' },
+}
+
+function TypeBadge({ type }) {
+  const b = TYPE_BADGE[type] || { bg: '#f3f4f6', color: '#374151', label: type }
+  return (
+    <span
+      className="px-2 py-0.5 rounded text-xs font-medium"
+      style={{ background: b.bg, color: b.color }}
+    >
+      {b.label}
+    </span>
+  )
+}
+
 // Nhãn tiếng Việt chi tiết theo từng phiếu (cho CSV)
 const rowTypeLabel = (r) => {
   if (r.transaction_type === 'IN') return 'Nhập kho'
@@ -166,7 +186,7 @@ function TransactionHistory() {
 
   return (
     <div className="max-w-6xl mx-auto p-3 sm:p-6">
-      <h2 className="text-xl font-bold text-gray-800 mb-4">Lịch sử giao dịch</h2>
+      <h2 className="text-xl font-semibold text-gray-900 mb-4">Lịch sử giao dịch</h2>
 
       {/* FILTER BAR */}
       <div className="flex flex-wrap items-end gap-3 bg-white border border-gray-200 rounded p-4 mb-4">
@@ -278,23 +298,7 @@ function TransactionHistory() {
                     {fmtDate(r.transaction_date)}
                   </td>
                   <td className="px-3 py-2">
-                    {r.transaction_type === 'IN' ? (
-                      <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-medium">
-                        Nhập kho
-                      </span>
-                    ) : r.transaction_type === 'OUT' ? (
-                      <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">
-                        Xuất hàng
-                      </span>
-                    ) : r.transaction_type === 'TRANSFER' ? (
-                      <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-medium">
-                        Chuyển kho
-                      </span>
-                    ) : (
-                      <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs font-medium">
-                        {typeLabel(r.transaction_type)}
-                      </span>
-                    )}
+                    <TypeBadge type={r.transaction_type} />
                   </td>
                   <td className="px-3 py-2 text-gray-600">
                     {r.transaction_type === 'OUT'

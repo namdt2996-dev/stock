@@ -21,7 +21,7 @@ function MasterData() {
 
   return (
     <div className="max-w-3xl mx-auto p-3 sm:p-6">
-      <h2 className="text-xl font-bold text-gray-800 mb-4">Master Data</h2>
+      <h2 className="text-xl font-semibold text-gray-900 mb-4">Master Data</h2>
 
       <div className="flex gap-2 border-b border-gray-200 mb-4">
         {TABS.map((t) => (

@@ -207,7 +207,7 @@ function StockTake() {
         </div>
       )}
 
-      <h2 className="text-xl font-bold text-gray-800 mb-4">Kiểm kho</h2>
+      <h2 className="text-xl font-semibold text-gray-900 mb-4">Kiểm kho</h2>
 
       {/* HEADER */}
       <div className="flex flex-wrap items-end gap-4 bg-white border border-gray-200 rounded p-4 mb-4">

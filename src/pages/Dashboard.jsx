@@ -5,9 +5,12 @@ import { formatCurrency } from '../utils/formatCurrency'
 const fmt = (n) => (n == null ? '0' : Number(n).toLocaleString('vi-VN'))
 const fmtDate = (d) => (d ? String(d).slice(0, 10) : '—')
 
-function MetricCard({ icon, label, value, danger }) {
+function MetricCard({ icon, label, value, danger, accent }) {
   return (
-    <div className="bg-white border border-gray-200 rounded p-4">
+    <div
+      className="bg-white border border-gray-200 rounded p-4"
+      style={accent ? { borderLeft: `4px solid ${accent}` } : undefined}
+    >
       <div className="flex items-center gap-2 text-sm text-gray-500">
         <span aria-hidden="true">{icon}</span>
         {label}
@@ -50,7 +53,7 @@ function Dashboard({ onNavigate }) {
 
   return (
     <div className="max-w-6xl mx-auto p-3 sm:p-6">
-      <h2 className="text-xl font-bold text-gray-800 mb-4">Dashboard</h2>
+      <h2 className="text-xl font-semibold text-gray-900 mb-4">Dashboard</h2>
 
       {error && <p className="text-red-600 text-sm mb-3">Lỗi: {error}</p>}
       {loading && <p className="text-gray-500 text-sm mb-3">Đang tải…</p>}
@@ -61,22 +64,26 @@ function Dashboard({ onNavigate }) {
           icon="🏬"
           label="Sản phẩm đang tồn"
           value={fmt(stats?.total_products)}
+          accent="#22c55e"
         />
         <MetricCard
           icon="📦"
           label="Lô hàng active"
           value={fmt(stats?.total_batches)}
+          accent="#3b82f6"
         />
         <MetricCard
           icon="⏰"
           label="Sắp hết hạn (≤7 ngày)"
           value={fmt(stats?.expiring_7days)}
           danger={(stats?.expiring_7days ?? 0) > 0}
+          accent="#ef4444"
         />
         <MetricCard
           icon="💰"
           label="Tổng giá trị tồn kho"
           value={formatCurrency(stats?.total_stock_value)}
+          accent="#f59e0b"
         />
       </div>
 

@@ -104,7 +104,7 @@ function StockLevel() {
   return (
     <div className="max-w-6xl mx-auto p-3 sm:p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-gray-800">
+        <h2 className="text-xl font-semibold text-gray-900">
           Tồn kho{!allLocations && currentWarehouse ? ` — ${currentWarehouse}` : ''}
         </h2>
         <div className="flex items-center gap-3">
