@@ -7,6 +7,7 @@ import InboundReceipt from './pages/InboundReceipt'
 import StockLevel from './pages/StockLevel'
 import OutboundReceipt from './pages/OutboundReceipt'
 import StockTake from './pages/StockTake'
+import Transfer from './pages/Transfer'
 import TransactionHistory from './pages/TransactionHistory'
 
 // Tất cả mục điều hướng (dùng cho cả desktop nav lẫn bottom nav)
@@ -16,12 +17,13 @@ const NAV = [
   { key: 'inbound', label: 'Nhập kho', short: 'Nhập', icon: '📥' },
   { key: 'stock', label: 'Tồn kho', short: 'Tồn kho', icon: '📦' },
   { key: 'outbound', label: 'Xuất hàng', short: 'Xuất', icon: '📤' },
+  { key: 'transfer', label: 'Chuyển kho', short: 'Chuyển', icon: '🔁' },
   { key: 'stockTake', label: 'Kiểm kho', short: 'Kiểm', icon: '✅' },
   { key: 'history', label: 'Lịch sử', short: 'Lịch sử', icon: '🕘' },
 ]
 
 // Bottom nav (mobile): 5 mục chính + nhóm còn lại vào "More"
-const MAIN_KEYS = ['dashboard', 'inbound', 'stock', 'outbound', 'stockTake']
+const MAIN_KEYS = ['dashboard', 'inbound', 'outbound', 'transfer', 'stockTake']
 const mainItems = MAIN_KEYS.map((k) => NAV.find((n) => n.key === k))
 const moreItems = NAV.filter((n) => !MAIN_KEYS.includes(n.key))
 
@@ -111,6 +113,7 @@ function App() {
         {page === 'inbound' && <InboundReceipt />}
         {page === 'stock' && <StockLevel />}
         {page === 'outbound' && <OutboundReceipt />}
+        {page === 'transfer' && <Transfer />}
         {page === 'stockTake' && <StockTake />}
         {page === 'history' && <TransactionHistory />}
       </main>

@@ -91,7 +91,15 @@ function TransactionHistory() {
   )
 
   const typeLabel = (t) =>
-    t === 'IN' ? 'Nhập kho' : t === 'OUT' ? 'Xuất hàng' : t
+    t === 'IN'
+      ? 'Nhập kho'
+      : t === 'OUT'
+        ? 'Xuất hàng'
+        : t === 'TRANSFER'
+          ? 'Chuyển kho'
+          : t === 'ADJUST'
+            ? 'Điều chỉnh'
+            : t
 
   function handleExport() {
     const headers = [
@@ -233,9 +241,13 @@ function TransactionHistory() {
                       <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">
                         Xuất hàng
                       </span>
+                    ) : r.transaction_type === 'TRANSFER' ? (
+                      <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-medium">
+                        Chuyển kho
+                      </span>
                     ) : (
                       <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs font-medium">
-                        {r.transaction_type}
+                        {typeLabel(r.transaction_type)}
                       </span>
                     )}
                   </td>
@@ -297,9 +309,7 @@ function TransactionHistory() {
             <div className="flex items-start justify-between border-b border-gray-200 p-4">
               <div className="text-sm text-gray-700 space-y-1">
                 <div className="text-base font-bold text-gray-800">
-                  {selected.transaction_type === 'IN'
-                    ? 'Phiếu nhập kho'
-                    : 'Phiếu xuất kho'}
+                  Phiếu {typeLabel(selected.transaction_type).toLowerCase()}
                 </div>
                 <div>Ngày: {fmtDate(selected.transaction_date)}</div>
                 {selected.transaction_type === 'OUT' && (

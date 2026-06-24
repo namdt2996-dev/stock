@@ -58,6 +58,29 @@ export async function createOutboundReceipt(header, lines) {
 }
 
 /**
+ * Tạo phiếu chuyển kho (TRANSFER) — ATOMIC qua RPC create_transfer.
+ * Trừ tồn kho đi theo FEFO, cộng vào kho đến.
+ *
+ * header: { transaction_date, location_from, location_to, reference_doc }
+ * lines:  [{ product_id, quantity }]
+ */
+export async function createTransfer(header, lines) {
+  if (!lines || lines.length === 0) {
+    throw new Error('Phiếu chuyển phải có ít nhất 1 dòng sản phẩm.')
+  }
+
+  const { data, error } = await supabase.rpc('create_transfer', {
+    p_transaction_date: header.transaction_date,
+    p_location_from: header.location_from,
+    p_location_to: header.location_to,
+    p_reference_doc: header.reference_doc || null,
+    p_lines: lines,
+  })
+  if (error) throw error
+  return data
+}
+
+/**
  * Lấy danh sách sản phẩm CÓ TỒN (> 0) trong một kho cụ thể.
  * Dùng cho phiếu xuất: chỉ cho chọn sản phẩm thực sự có hàng trong kho đó.
  *
