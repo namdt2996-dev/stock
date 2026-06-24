@@ -124,7 +124,12 @@ Mọi giao dịch xuất (`transaction_type = 'OUT'`) phải mang một mã lý 
 - [x] Giai đoạn 5B: Dashboard — metric cards, cảnh báo hết hạn ✓
 - [x] Giai đoạn 5C: Export CSV — tồn kho + lịch sử ✓
 - [x] Kiểm kho (bổ sung): đếm theo lô, pack unit, ADJUST RPC ✓
-- [ ] Giai đoạn 5D: Deploy lên Vercel
+- [x] Active/Inactive toggle cho Products ✓
+- [x] Chuyển kho (TRANSFER) — FEFO từ kho đi, upsert kho đến ✓
+- [x] Xuất phiếu PNG/PDF từ Lịch sử (html2canvas + jspdf) ✓
+- [x] entry_reason_code: PURCHASE / PRODUCTION cho phiếu IN ✓
+- [x] Bộ lọc Lịch sử chi tiết theo lý do xuất/nhập ✓
+- [x] Giai đoạn 5D: Deploy lên Vercel: https://stock-kappa-nine.vercel.app ✓
 
 ---
 
@@ -163,3 +168,14 @@ Mọi giao dịch xuất (`transaction_type = 'OUT'`) phải mang một mã lý 
 - `transaction_type` ENUM: IN / OUT / TRANSFER / ADJUST
 - 8 trang UI: Dashboard, MasterData, InboundReceipt, OutboundReceipt, StockLevel, StockTake, TransactionHistory
 - Utility: `src/utils/formatCurrency.js`, `src/utils/exportCsv.js`
+- URL production: https://stock-kappa-nine.vercel.app
+- Supabase config: đã thêm Vercel domain vào Redirect URLs
+- ENUM `entry_reason_code`: PURCHASE / PRODUCTION (migration 012)
+- ENUM `transaction_type`: IN / OUT / TRANSFER / ADJUST
+- ENUM `exit_reason_code`: PROCESSING / SALE / STAFF / WASTE
+- RPC functions: `create_inbound_receipt` (6 params, migration 013), `create_outbound_receipt`, `create_transfer`, `create_stock_adjustment`
+- Migrations: 001-013, chạy thủ công qua Supabase Dashboard
+- UNIQUE constraint: `inventory_stock_level(batch_id, location_id)` — thêm thủ công trước migration 011
+- `is_active` column trên `products` (migration 010)
+- `pack_unit` + `conversion_factor` trên `products` (migration 007)
+- Trang in PDF/ảnh: `src/utils/exportReceipt.js` (lazy-load html2canvas + jspdf), `src/components/ReceiptPrintView.jsx`
