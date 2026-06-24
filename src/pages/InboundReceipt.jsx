@@ -18,6 +18,7 @@ const emptyLine = () => ({
 const emptyHeader = () => ({
   transaction_date: today(),
   partner_id: '',
+  entry_reason_code: 'PURCHASE',
   location_id: '',
   reference_doc: '',
 })
@@ -130,8 +131,14 @@ function InboundReceipt() {
     setSaved(false)
     setIsDirty(false)
 
-    if (!header.partner_id) return setError('Vui lòng chọn nhà cung cấp.')
+    const isPurchase = header.entry_reason_code === 'PURCHASE'
+    if (isPurchase && !header.partner_id) {
+      return setError('Lý do "Mua hàng" yêu cầu chọn nhà cung cấp.')
+    }
     if (!header.location_id) return setError('Vui lòng chọn kho nhập.')
+
+    // PRODUCTION: không có NCC -> partner_id = null
+    const headerToSave = { ...header, partner_id: header.partner_id || null }
 
     const cleanLines = lines
       .filter((l) => l.product_id)
@@ -152,7 +159,7 @@ function InboundReceipt() {
 
     setSaving(true)
     try {
-      const transaction_id = await createInboundReceipt(header, cleanLines)
+      const transaction_id = await createInboundReceipt(headerToSave, cleanLines)
       setSuccess(`Đã lưu phiếu nhập thành công (mã: ${transaction_id}).`)
       setShowToast(true)
       // Giữ nguyên dữ liệu phiếu để có thể IN; bấm "Hủy" để tạo phiếu mới.
@@ -176,8 +183,8 @@ function InboundReceipt() {
       <div className="no-print">
       <h2 className="text-xl font-semibold text-gray-900 mb-4">Phiếu nhập kho</h2>
 
-      {/* HEADER — 4 field: mobile 1 cột, sm 2 cột, lg 4 cột */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-white border border-gray-200 rounded p-4 mb-4">
+      {/* HEADER — 5 field: mobile 1 cột, sm 2 cột, lg 5 cột */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 bg-white border border-gray-200 rounded p-4 mb-4">
         <label className="flex flex-col text-sm text-gray-600">
           Ngày nhập
           <input
@@ -190,18 +197,37 @@ function InboundReceipt() {
         </label>
 
         <label className="flex flex-col text-sm text-gray-600">
-          Nhà cung cấp
+          Nhà cung cấp{' '}
+          {header.entry_reason_code === 'PURCHASE' && (
+            <span className="text-red-500 text-xs">*</span>
+          )}
           <select
             className={inputClass}
             value={header.partner_id}
             onChange={(e) => updateHeader('partner_id', e.target.value)}
           >
-            <option value="">-- Chọn NCC --</option>
+            <option value="">
+              {header.entry_reason_code === 'PURCHASE'
+                ? '-- Chọn NCC --'
+                : '-- Không --'}
+            </option>
             {suppliers.map((s) => (
               <option key={s.partner_id} value={s.partner_id}>
                 {s.name}
               </option>
             ))}
+          </select>
+        </label>
+
+        <label className="flex flex-col text-sm text-gray-600">
+          Lý do nhập
+          <select
+            className={inputClass}
+            value={header.entry_reason_code}
+            onChange={(e) => updateHeader('entry_reason_code', e.target.value)}
+          >
+            <option value="PURCHASE">Mua hàng</option>
+            <option value="PRODUCTION">Nhập sản lượng</option>
           </select>
         </label>
 

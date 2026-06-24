@@ -13,10 +13,28 @@ const EXIT_REASON_LABELS = {
   WASTE: 'Hủy hàng',
 }
 
-// Tùy chọn lọc "Loại" — mỗi key map sang transaction_type + exit_reason_code
+// Nhãn tiếng Việt cho cả lý do nhập (entry) lẫn lý do xuất (exit)
+const REASON_LABELS = {
+  PURCHASE: 'Mua hàng',
+  PRODUCTION: 'Nhập sản lượng',
+  PROCESSING: 'Xuất bếp',
+  SALE: 'Xuất bán',
+  STAFF: 'Nội bộ',
+  WASTE: 'Hủy hàng',
+}
+
+// Lý do của 1 phiếu: IN -> entry_reason_code, OUT -> exit_reason_code
+const reasonLabel = (r) => {
+  const code =
+    r.transaction_type === 'IN' ? r.entry_reason_code : r.exit_reason_code
+  return code ? REASON_LABELS[code] || code : ''
+}
+
+// Tùy chọn lọc "Loại" — map sang transaction_type + exit/entry reason
 const TYPE_OPTIONS = [
   { key: 'all', label: 'Tất cả' },
-  { key: 'IN', label: 'Nhập kho', type: 'IN' },
+  { key: 'IN_PURCHASE', label: 'Mua hàng', type: 'IN', entry: 'PURCHASE' },
+  { key: 'IN_PRODUCTION', label: 'Nhập sản lượng', type: 'IN', entry: 'PRODUCTION' },
   { key: 'OUT_PROCESSING', label: 'Xuất bếp', type: 'OUT', reason: 'PROCESSING' },
   { key: 'OUT_SALE', label: 'Xuất bán', type: 'OUT', reason: 'SALE' },
   { key: 'OUT_STAFF', label: 'Nội bộ', type: 'OUT', reason: 'STAFF' },
@@ -112,6 +130,7 @@ function TransactionHistory() {
         await getTransactions({
           transaction_type: opt.type || 'all',
           exit_reason_code: opt.reason || undefined,
+          entry_reason_code: opt.entry || undefined,
           date_from: filters.date_from,
           date_to: filters.date_to,
           product_id: filters.product_id || undefined,
@@ -166,15 +185,13 @@ function TransactionHistory() {
 
   function handleExport() {
     const headers = [
-      'Ngày', 'Loại', 'Lý do xuất', 'Đối tác',
+      'Ngày', 'Loại', 'Lý do', 'Đối tác',
       'Số phiếu tham chiếu', 'Số dòng', 'Tổng giá trị',
     ]
     const data = rows.map((r) => [
       fmtDate(r.transaction_date),
       rowTypeLabel(r),
-      r.transaction_type === 'OUT'
-        ? EXIT_REASON_LABELS[r.exit_reason_code] || r.exit_reason_code || ''
-        : '',
+      reasonLabel(r),
       r.partner_name || '',
       r.reference_doc || '',
       r.line_count,
@@ -276,7 +293,7 @@ function TransactionHistory() {
             <tr>
               <th className="text-left px-3 py-2">Ngày</th>
               <th className="text-left px-3 py-2">Loại</th>
-              <th className="text-left px-3 py-2">Lý do xuất</th>
+              <th className="text-left px-3 py-2">Lý do</th>
               <th className="text-left px-3 py-2">Đối tác</th>
               <th className="text-left px-3 py-2">Số phiếu</th>
               <th className="text-right px-3 py-2">Số dòng</th>
@@ -301,11 +318,7 @@ function TransactionHistory() {
                     <TypeBadge type={r.transaction_type} />
                   </td>
                   <td className="px-3 py-2 text-gray-600">
-                    {r.transaction_type === 'OUT'
-                      ? EXIT_REASON_LABELS[r.exit_reason_code] ||
-                        r.exit_reason_code ||
-                        '—'
-                      : ''}
+                    {reasonLabel(r) || '—'}
                   </td>
                   <td className="px-3 py-2 text-gray-600">
                     {r.partner_name || '—'}
@@ -361,13 +374,8 @@ function TransactionHistory() {
                   Phiếu {typeLabel(selected.transaction_type).toLowerCase()}
                 </div>
                 <div>Ngày: {fmtDate(selected.transaction_date)}</div>
-                {selected.transaction_type === 'OUT' && (
-                  <div>
-                    Lý do:{' '}
-                    {EXIT_REASON_LABELS[selected.exit_reason_code] ||
-                      selected.exit_reason_code ||
-                      '—'}
-                  </div>
+                {reasonLabel(selected) && (
+                  <div>Lý do: {reasonLabel(selected)}</div>
                 )}
                 <div>Đối tác: {selected.partner_name || '—'}</div>
                 <div>Số phiếu: {selected.reference_doc || '—'}</div>

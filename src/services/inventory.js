@@ -23,6 +23,7 @@ export async function createInboundReceipt(header, lines) {
     p_partner_id: header.partner_id,
     p_location_id: header.location_id,
     p_reference_doc: header.reference_doc || null,
+    p_entry_reason_code: header.entry_reason_code || 'PURCHASE',
     p_lines: lines,
   })
   if (error) throw error
@@ -180,8 +181,14 @@ export async function getStockLevels(location_id = null) {
  * Sắp xếp transaction_date DESC, created_at DESC (created_at thêm ở migration 006).
  */
 export async function getTransactions(filters = {}) {
-  const { transaction_type, exit_reason_code, date_from, date_to, product_id } =
-    filters
+  const {
+    transaction_type,
+    exit_reason_code,
+    entry_reason_code,
+    date_from,
+    date_to,
+    product_id,
+  } = filters
 
   // Lọc theo sản phẩm: tìm trước các transaction_id có chứa sản phẩm đó.
   let txIds = null
@@ -198,7 +205,7 @@ export async function getTransactions(filters = {}) {
   let query = supabase.from('transactions').select(
     `
       transaction_id, transaction_date, transaction_type,
-      exit_reason_code, reference_doc,
+      exit_reason_code, entry_reason_code, reference_doc,
       partners:partner_id ( name ),
       transaction_details ( total_amount, location_from, location_to )
     `
@@ -206,6 +213,9 @@ export async function getTransactions(filters = {}) {
 
   if (exit_reason_code) {
     query = query.eq('exit_reason_code', exit_reason_code)
+  }
+  if (entry_reason_code) {
+    query = query.eq('entry_reason_code', entry_reason_code)
   }
   if (transaction_type && transaction_type !== 'all') {
     query = query.eq('transaction_type', transaction_type)
@@ -238,6 +248,7 @@ export async function getTransactions(filters = {}) {
       transaction_date: t.transaction_date,
       transaction_type: t.transaction_type,
       exit_reason_code: t.exit_reason_code,
+      entry_reason_code: t.entry_reason_code,
       reference_doc: t.reference_doc,
       partner_name: t.partners?.name ?? null,
       line_count: details.length,
