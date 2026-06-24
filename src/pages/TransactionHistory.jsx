@@ -3,6 +3,8 @@ import { getProducts } from '../services/masterData'
 import { getTransactions, getTransactionDetails } from '../services/inventory'
 import { exportToCsv } from '../utils/exportCsv'
 import { formatCurrency } from '../utils/formatCurrency'
+import { exportAsImage, exportAsPDF } from '../utils/exportReceipt'
+import ReceiptPrintView from '../components/ReceiptPrintView'
 
 const EXIT_REASON_LABELS = {
   PROCESSING: 'Xuất bếp',
@@ -63,6 +65,22 @@ function TransactionHistory() {
   const [selected, setSelected] = useState(null) // header phiếu đang xem
   const [details, setDetails] = useState([])
   const [detailLoading, setDetailLoading] = useState(false)
+  const [exporting, setExporting] = useState(null) // 'png' | 'pdf' | null
+
+  async function handleExportReceipt(kind) {
+    if (!selected) return
+    setExporting(kind)
+    try {
+      const d = new Date().toISOString().slice(0, 10)
+      const type = (selected.transaction_type || 'phieu').toLowerCase()
+      const fname = `phieu-${type}-${d}.${kind}`
+      if (kind === 'png') await exportAsImage('receipt-print-view', fname)
+      else await exportAsPDF('receipt-print-view', fname)
+    } catch (e) {
+      setError(e.message)
+    }
+    setExporting(null)
+  }
 
   async function search() {
     setLoading(true)
@@ -412,7 +430,23 @@ function TransactionHistory() {
               </table>
             </div>
 
-            <div className="flex justify-end border-t border-gray-200 p-4">
+            <div className="flex flex-wrap justify-end gap-2 border-t border-gray-200 p-4">
+              <button
+                type="button"
+                onClick={() => handleExportReceipt('png')}
+                disabled={detailLoading || exporting !== null}
+                className="bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+              >
+                {exporting === 'png' ? 'Đang tạo file…' : '📷 Xuất ảnh'}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleExportReceipt('pdf')}
+                disabled={detailLoading || exporting !== null}
+                className="bg-red-600 text-white text-sm font-medium px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50"
+              >
+                {exporting === 'pdf' ? 'Đang tạo file…' : '📄 Xuất PDF'}
+              </button>
               <button
                 type="button"
                 onClick={closeModal}
@@ -421,6 +455,13 @@ function TransactionHistory() {
                 Đóng
               </button>
             </div>
+
+            {/* View ẩn để html2canvas chụp */}
+            <ReceiptPrintView
+              id="receipt-print-view"
+              transaction={selected}
+              details={details}
+            />
           </div>
         </div>
       )}
