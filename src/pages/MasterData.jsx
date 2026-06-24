@@ -2,12 +2,15 @@ import { useEffect, useRef, useState } from 'react'
 import {
   getProducts,
   createProduct,
+  updateProduct,
   toggleProductActive,
   checkSkuExists,
   getPartners,
   createPartner,
+  updatePartner,
   getLocations,
   createLocation,
+  updateLocation,
 } from '../services/masterData'
 
 const TABS = [
@@ -42,44 +45,6 @@ function MasterData() {
       {tab === 'products' && <ProductsTab />}
       {tab === 'partners' && <PartnersTab />}
       {tab === 'locations' && <LocationsTab />}
-    </div>
-  )
-}
-
-// ---------- shared UI ----------
-function Table({ columns, rows }) {
-  return (
-    <div className="overflow-x-auto">
-    <table className="w-full text-sm border border-gray-200">
-      <thead className="bg-gray-50">
-        <tr>
-          {columns.map((c) => (
-            <th key={c.key} className="text-left px-3 py-2 font-medium text-gray-600">
-              {c.label}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.length === 0 ? (
-          <tr>
-            <td colSpan={columns.length} className="px-3 py-3 text-center text-gray-400">
-              Chưa có dữ liệu
-            </td>
-          </tr>
-        ) : (
-          rows.map((r) => (
-            <tr key={r.product_id || r.partner_id || r.location_id} className="border-t border-gray-100">
-              {columns.map((c) => (
-                <td key={c.key} className="px-3 py-2 text-gray-700">
-                  {r[c.key]}
-                </td>
-              ))}
-            </tr>
-          ))
-        )}
-      </tbody>
-    </table>
     </div>
   )
 }
@@ -162,6 +127,67 @@ function ProductsTab() {
     return true
   })
 
+  // ----- inline edit -----
+  const [editId, setEditId] = useState(null)
+  const [editForm, setEditForm] = useState(null)
+  const [editSkuError, setEditSkuError] = useState(null)
+
+  function startEdit(r) {
+    setEditId(r.product_id)
+    setEditForm({
+      name: r.name || '',
+      sku: r.sku || '',
+      unit_of_measure: r.unit_of_measure || '',
+      pack_unit: r.pack_unit || '',
+      conversion_factor: r.conversion_factor ?? '',
+    })
+    setEditSkuError(null)
+    setError(null)
+  }
+  function cancelEdit() {
+    setEditId(null)
+    setEditForm(null)
+    setEditSkuError(null)
+  }
+  function setEf(field, value) {
+    setEditForm((f) => ({ ...f, [field]: value }))
+    if (field === 'sku') setEditSkuError(null)
+  }
+
+  async function handleEditSave() {
+    if (!editForm.name.trim() || !editForm.sku.trim()) {
+      setEditSkuError(null)
+      setError('Tên và SKU không được để trống.')
+      return
+    }
+    try {
+      if (await checkSkuExists(editForm.sku, editId)) {
+        setEditSkuError('SKU này đã tồn tại')
+        return
+      }
+    } catch {
+      // bỏ qua lỗi kiểm tra, để DB bắt 23505
+    }
+    try {
+      const updated = await updateProduct(editId, {
+        ...editForm,
+        conversion_factor: editForm.conversion_factor
+          ? Number(editForm.conversion_factor)
+          : undefined,
+      })
+      setRows((prev) =>
+        prev.map((r) => (r.product_id === editId ? { ...r, ...updated } : r))
+      )
+      cancelEdit()
+    } catch (e) {
+      if (e.code === '23505') {
+        setEditSkuError('SKU đã tồn tại, vui lòng dùng SKU khác')
+      } else {
+        setError(e.message)
+      }
+    }
+  }
+
   async function handleAdd(e) {
     e.preventDefault()
     setError(null)
@@ -231,18 +257,87 @@ function ProductsTab() {
               <th className="text-left px-3 py-2 font-medium text-gray-600">ĐVT</th>
               <th className="text-left px-3 py-2 font-medium text-gray-600">Đơn vị đóng gói</th>
               <th className="text-left px-3 py-2 font-medium text-gray-600">Trạng thái</th>
+              <th className="text-left px-3 py-2 font-medium text-gray-600"></th>
             </tr>
           </thead>
           <tbody>
             {visibleRows.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-3 py-3 text-center text-gray-400">
+                <td colSpan={6} className="px-3 py-3 text-center text-gray-400">
                   Chưa có dữ liệu
                 </td>
               </tr>
             ) : (
               visibleRows.map((r) => {
                 const active = r.is_active !== false
+                const editing = editId === r.product_id
+                if (editing) {
+                  return (
+                    <tr key={r.product_id} className="border-t border-gray-100 bg-green-50/40">
+                      <td className="px-3 py-2">
+                        <input
+                          className={inputClass}
+                          value={editForm.name}
+                          onChange={(e) => setEf('name', e.target.value)}
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          className={`${inputClass} ${editSkuError ? 'border-red-500 focus:ring-red-500' : ''}`}
+                          value={editForm.sku}
+                          onChange={(e) => setEf('sku', e.target.value)}
+                        />
+                        {editSkuError && (
+                          <div className="text-red-600 text-xs mt-0.5">{editSkuError}</div>
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          className={`${inputClass} w-20`}
+                          value={editForm.unit_of_measure}
+                          onChange={(e) => setEf('unit_of_measure', e.target.value)}
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-1">
+                          <input
+                            className={`${inputClass} w-24`}
+                            placeholder="thùng…"
+                            value={editForm.pack_unit}
+                            onChange={(e) => setEf('pack_unit', e.target.value)}
+                          />
+                          {editForm.pack_unit && (
+                            <input
+                              type="number"
+                              min="1"
+                              className={`${inputClass} w-16`}
+                              placeholder="SL"
+                              value={editForm.conversion_factor}
+                              onChange={(e) => setEf('conversion_factor', e.target.value)}
+                            />
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 text-gray-400 text-xs">—</td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={handleEditSave}
+                          className="text-green-700 hover:text-green-800 text-sm mr-2"
+                        >
+                          💾 Lưu
+                        </button>
+                        <button
+                          type="button"
+                          onClick={cancelEdit}
+                          className="text-gray-500 hover:text-gray-700 text-sm"
+                        >
+                          ✕ Hủy
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                }
                 return (
                   <tr key={r.product_id} className="border-t border-gray-100">
                     <td className="px-3 py-2 text-gray-800">{r.name}</td>
@@ -277,6 +372,15 @@ function ProductsTab() {
                           {active ? 'Đang dùng' : 'Ngừng dùng'}
                         </span>
                       </div>
+                    </td>
+                    <td className="px-3 py-2">
+                      <button
+                        type="button"
+                        onClick={() => startEdit(r)}
+                        className="text-sm text-gray-600 hover:text-gray-900"
+                      >
+                        ✏️ Sửa
+                      </button>
                     </td>
                   </tr>
                 )
@@ -375,15 +479,114 @@ function PartnersTab() {
     setSaving(false)
   }
 
+  const [editId, setEditId] = useState(null)
+  const [editForm, setEditForm] = useState(null)
+
+  function startEdit(r) {
+    setEditId(r.partner_id)
+    setEditForm({ name: r.name || '', type: r.type || 'SUPPLIER' })
+    setError(null)
+  }
+  function cancelEdit() {
+    setEditId(null)
+    setEditForm(null)
+  }
+  async function handleEditSave() {
+    if (!editForm.name.trim()) {
+      setError('Tên đối tác không được để trống.')
+      return
+    }
+    try {
+      const updated = await updatePartner(editId, editForm)
+      setRows((prev) =>
+        prev.map((r) => (r.partner_id === editId ? { ...r, ...updated } : r))
+      )
+      cancelEdit()
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+
   return (
     <div className="space-y-4">
-      <Table
-        columns={[
-          { key: 'name', label: 'Tên' },
-          { key: 'type', label: 'Loại' },
-        ]}
-        rows={rows}
-      />
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm border border-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="text-left px-3 py-2 font-medium text-gray-600">Tên đối tác</th>
+              <th className="text-left px-3 py-2 font-medium text-gray-600">Loại</th>
+              <th className="text-left px-3 py-2 font-medium text-gray-600"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={3} className="px-3 py-3 text-center text-gray-400">
+                  Chưa có dữ liệu
+                </td>
+              </tr>
+            ) : (
+              rows.map((r) =>
+                editId === r.partner_id ? (
+                  <tr key={r.partner_id} className="border-t border-gray-100 bg-green-50/40">
+                    <td className="px-3 py-2">
+                      <input
+                        className={inputClass}
+                        value={editForm.name}
+                        onChange={(e) =>
+                          setEditForm((f) => ({ ...f, name: e.target.value }))
+                        }
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <select
+                        className={inputClass}
+                        value={editForm.type}
+                        onChange={(e) =>
+                          setEditForm((f) => ({ ...f, type: e.target.value }))
+                        }
+                      >
+                        <option value="SUPPLIER">SUPPLIER</option>
+                        <option value="CUSTOMER">CUSTOMER</option>
+                      </select>
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={handleEditSave}
+                        className="text-green-700 hover:text-green-800 text-sm mr-2"
+                      >
+                        💾 Lưu
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelEdit}
+                        className="text-gray-500 hover:text-gray-700 text-sm"
+                      >
+                        ✕ Hủy
+                      </button>
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={r.partner_id} className="border-t border-gray-100">
+                    <td className="px-3 py-2 text-gray-800">{r.name}</td>
+                    <td className="px-3 py-2 text-gray-600">{r.type}</td>
+                    <td className="px-3 py-2">
+                      <button
+                        type="button"
+                        onClick={() => startEdit(r)}
+                        className="text-sm text-gray-600 hover:text-gray-900"
+                      >
+                        ✏️ Sửa
+                      </button>
+                    </td>
+                  </tr>
+                )
+              )
+            )}
+          </tbody>
+        </table>
+      </div>
       <form onSubmit={handleAdd} className="flex flex-wrap gap-2 items-end">
         <input
           className={inputClass}
@@ -441,15 +644,111 @@ function LocationsTab() {
     setSaving(false)
   }
 
+  const [editId, setEditId] = useState(null)
+  const [editForm, setEditForm] = useState(null)
+
+  function startEdit(r) {
+    setEditId(r.location_id)
+    setEditForm({ warehouse_name: r.warehouse_name || '', address: r.address || '' })
+    setError(null)
+  }
+  function cancelEdit() {
+    setEditId(null)
+    setEditForm(null)
+  }
+  async function handleEditSave() {
+    if (!editForm.warehouse_name.trim()) {
+      setError('Tên kho không được để trống.')
+      return
+    }
+    try {
+      const updated = await updateLocation(editId, editForm)
+      setRows((prev) =>
+        prev.map((r) => (r.location_id === editId ? { ...r, ...updated } : r))
+      )
+      cancelEdit()
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+
   return (
     <div className="space-y-4">
-      <Table
-        columns={[
-          { key: 'warehouse_name', label: 'Tên kho' },
-          { key: 'address', label: 'Địa chỉ' },
-        ]}
-        rows={rows}
-      />
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm border border-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="text-left px-3 py-2 font-medium text-gray-600">Tên kho</th>
+              <th className="text-left px-3 py-2 font-medium text-gray-600">Địa chỉ</th>
+              <th className="text-left px-3 py-2 font-medium text-gray-600"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={3} className="px-3 py-3 text-center text-gray-400">
+                  Chưa có dữ liệu
+                </td>
+              </tr>
+            ) : (
+              rows.map((r) =>
+                editId === r.location_id ? (
+                  <tr key={r.location_id} className="border-t border-gray-100 bg-green-50/40">
+                    <td className="px-3 py-2">
+                      <input
+                        className={inputClass}
+                        value={editForm.warehouse_name}
+                        onChange={(e) =>
+                          setEditForm((f) => ({ ...f, warehouse_name: e.target.value }))
+                        }
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <input
+                        className={inputClass}
+                        value={editForm.address}
+                        onChange={(e) =>
+                          setEditForm((f) => ({ ...f, address: e.target.value }))
+                        }
+                      />
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={handleEditSave}
+                        className="text-green-700 hover:text-green-800 text-sm mr-2"
+                      >
+                        💾 Lưu
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelEdit}
+                        className="text-gray-500 hover:text-gray-700 text-sm"
+                      >
+                        ✕ Hủy
+                      </button>
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={r.location_id} className="border-t border-gray-100">
+                    <td className="px-3 py-2 text-gray-800">{r.warehouse_name}</td>
+                    <td className="px-3 py-2 text-gray-600">{r.address}</td>
+                    <td className="px-3 py-2">
+                      <button
+                        type="button"
+                        onClick={() => startEdit(r)}
+                        className="text-sm text-gray-600 hover:text-gray-900"
+                      >
+                        ✏️ Sửa
+                      </button>
+                    </td>
+                  </tr>
+                )
+              )
+            )}
+          </tbody>
+        </table>
+      </div>
       <form onSubmit={handleAdd} className="flex flex-wrap gap-2 items-end">
         <input
           className={inputClass}

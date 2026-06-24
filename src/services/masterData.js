@@ -15,14 +15,13 @@ export async function getProducts(activeOnly = true) {
 }
 
 // Kiểm tra SKU đã tồn tại chưa (true = đã có).
-export async function checkSkuExists(sku) {
+// excludeId: bỏ qua chính sản phẩm này (dùng khi update).
+export async function checkSkuExists(sku, excludeId = null) {
   const value = (sku || '').trim()
   if (!value) return false
-  const { data, error } = await supabase
-    .from('products')
-    .select('sku')
-    .eq('sku', value)
-    .maybeSingle()
+  let query = supabase.from('products').select('product_id').eq('sku', value)
+  if (excludeId) query = query.neq('product_id', excludeId)
+  const { data, error } = await query.maybeSingle()
   if (error) throw error
   return !!data
 }
@@ -60,6 +59,26 @@ export async function createProduct({
   return data
 }
 
+export async function updateProduct(
+  product_id,
+  { name, sku, unit_of_measure, pack_unit, conversion_factor }
+) {
+  const { data, error } = await supabase
+    .from('products')
+    .update({
+      name,
+      sku,
+      unit_of_measure,
+      pack_unit: pack_unit || null,
+      conversion_factor: pack_unit ? conversion_factor || 1 : null,
+    })
+    .eq('product_id', product_id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
 // ---------- Partners ----------
 export async function getPartners(type) {
   let query = supabase.from('partners').select('*').order('name', { ascending: true })
@@ -73,6 +92,17 @@ export async function createPartner({ name, type }) {
   const { data, error } = await supabase
     .from('partners')
     .insert({ name, type })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function updatePartner(partner_id, { name, type }) {
+  const { data, error } = await supabase
+    .from('partners')
+    .update({ name, type })
+    .eq('partner_id', partner_id)
     .select()
     .single()
   if (error) throw error
@@ -93,6 +123,17 @@ export async function createLocation({ warehouse_name, address }) {
   const { data, error } = await supabase
     .from('locations')
     .insert({ warehouse_name, address })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function updateLocation(location_id, { warehouse_name, address }) {
+  const { data, error } = await supabase
+    .from('locations')
+    .update({ warehouse_name, address })
+    .eq('location_id', location_id)
     .select()
     .single()
   if (error) throw error
