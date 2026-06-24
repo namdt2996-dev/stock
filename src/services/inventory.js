@@ -175,11 +175,13 @@ export async function getStockLevels(location_id = null) {
  * Lấy danh sách phiếu giao dịch (mỗi phiếu 1 dòng header) kèm số dòng chi tiết
  * và tổng giá trị.
  *
- * filters: { transaction_type, date_from, date_to, product_id } — đều optional.
+ * filters: { transaction_type, exit_reason_code, date_from, date_to, product_id }
+ *   — đều optional.
  * Sắp xếp transaction_date DESC, created_at DESC (created_at thêm ở migration 006).
  */
 export async function getTransactions(filters = {}) {
-  const { transaction_type, date_from, date_to, product_id } = filters
+  const { transaction_type, exit_reason_code, date_from, date_to, product_id } =
+    filters
 
   // Lọc theo sản phẩm: tìm trước các transaction_id có chứa sản phẩm đó.
   let txIds = null
@@ -202,6 +204,9 @@ export async function getTransactions(filters = {}) {
     `
   )
 
+  if (exit_reason_code) {
+    query = query.eq('exit_reason_code', exit_reason_code)
+  }
   if (transaction_type && transaction_type !== 'all') {
     query = query.eq('transaction_type', transaction_type)
   }

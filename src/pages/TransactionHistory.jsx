@@ -11,6 +11,28 @@ const EXIT_REASON_LABELS = {
   WASTE: 'Hủy hàng',
 }
 
+// Tùy chọn lọc "Loại" — mỗi key map sang transaction_type + exit_reason_code
+const TYPE_OPTIONS = [
+  { key: 'all', label: 'Tất cả' },
+  { key: 'IN', label: 'Nhập kho', type: 'IN' },
+  { key: 'OUT_PROCESSING', label: 'Xuất bếp', type: 'OUT', reason: 'PROCESSING' },
+  { key: 'OUT_SALE', label: 'Xuất bán', type: 'OUT', reason: 'SALE' },
+  { key: 'OUT_STAFF', label: 'Nội bộ', type: 'OUT', reason: 'STAFF' },
+  { key: 'OUT_WASTE', label: 'Hủy hàng', type: 'OUT', reason: 'WASTE' },
+  { key: 'TRANSFER', label: 'Chuyển kho', type: 'TRANSFER' },
+  { key: 'ADJUST', label: 'Điều chỉnh', type: 'ADJUST' },
+]
+
+// Nhãn tiếng Việt chi tiết theo từng phiếu (cho CSV)
+const rowTypeLabel = (r) => {
+  if (r.transaction_type === 'IN') return 'Nhập kho'
+  if (r.transaction_type === 'OUT')
+    return EXIT_REASON_LABELS[r.exit_reason_code] || 'Xuất hàng'
+  if (r.transaction_type === 'TRANSFER') return 'Chuyển kho'
+  if (r.transaction_type === 'ADJUST') return 'Điều chỉnh'
+  return r.transaction_type
+}
+
 const fmt = (n) => (n == null ? '' : Number(n).toLocaleString('vi-VN'))
 const fmtDate = (d) => (d ? String(d).slice(0, 10) : '—')
 
@@ -27,7 +49,7 @@ const inputClass =
 
 function TransactionHistory() {
   const [filters, setFilters] = useState({
-    transaction_type: 'all',
+    type_key: 'all',
     date_from: daysAgo(30),
     date_to: today(),
     product_id: '',
@@ -46,9 +68,12 @@ function TransactionHistory() {
     setLoading(true)
     setError(null)
     try {
+      const opt =
+        TYPE_OPTIONS.find((o) => o.key === filters.type_key) || TYPE_OPTIONS[0]
       setRows(
         await getTransactions({
-          transaction_type: filters.transaction_type,
+          transaction_type: opt.type || 'all',
+          exit_reason_code: opt.reason || undefined,
           date_from: filters.date_from,
           date_to: filters.date_to,
           product_id: filters.product_id || undefined,
@@ -108,7 +133,7 @@ function TransactionHistory() {
     ]
     const data = rows.map((r) => [
       fmtDate(r.transaction_date),
-      typeLabel(r.transaction_type),
+      rowTypeLabel(r),
       r.transaction_type === 'OUT'
         ? EXIT_REASON_LABELS[r.exit_reason_code] || r.exit_reason_code || ''
         : '',
@@ -131,14 +156,16 @@ function TransactionHistory() {
           Loại
           <select
             className={inputClass}
-            value={filters.transaction_type}
+            value={filters.type_key}
             onChange={(e) =>
-              setFilters({ ...filters, transaction_type: e.target.value })
+              setFilters({ ...filters, type_key: e.target.value })
             }
           >
-            <option value="all">Tất cả</option>
-            <option value="IN">Nhập kho</option>
-            <option value="OUT">Xuất hàng</option>
+            {TYPE_OPTIONS.map((o) => (
+              <option key={o.key} value={o.key}>
+                {o.label}
+              </option>
+            ))}
           </select>
         </label>
 
