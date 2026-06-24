@@ -14,6 +14,19 @@ export async function getProducts(activeOnly = true) {
   return data ?? []
 }
 
+// Kiểm tra SKU đã tồn tại chưa (true = đã có).
+export async function checkSkuExists(sku) {
+  const value = (sku || '').trim()
+  if (!value) return false
+  const { data, error } = await supabase
+    .from('products')
+    .select('sku')
+    .eq('sku', value)
+    .maybeSingle()
+  if (error) throw error
+  return !!data
+}
+
 export async function toggleProductActive(product_id, is_active) {
   const { data, error } = await supabase
     .from('products')

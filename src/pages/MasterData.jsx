@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   getProducts,
   createProduct,
   toggleProductActive,
+  checkSkuExists,
   getPartners,
   createPartner,
   getLocations,
@@ -101,6 +102,26 @@ function ProductsTab() {
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
   const [statusFilter, setStatusFilter] = useState('active') // active | inactive | all
+  const [skuError, setSkuError] = useState(null)
+  const skuRef = useRef(null)
+
+  async function handleSkuBlur() {
+    const value = form.sku.trim()
+    if (!value) {
+      setSkuError(null)
+      return
+    }
+    try {
+      if (await checkSkuExists(value)) {
+        setSkuError('SKU này đã tồn tại')
+      } else {
+        setSkuError(null)
+      }
+    } catch {
+      // lỗi mạng khi kiểm tra — bỏ qua, để bước submit bắt 23505
+      setSkuError(null)
+    }
+  }
 
   async function load() {
     try {
@@ -144,6 +165,12 @@ function ProductsTab() {
   async function handleAdd(e) {
     e.preventDefault()
     setError(null)
+
+    if (skuError) {
+      skuRef.current?.focus()
+      return
+    }
+
     setSaving(true)
     try {
       await createProduct({
@@ -159,9 +186,15 @@ function ProductsTab() {
         pack_unit: '',
         conversion_factor: '',
       })
+      setSkuError(null)
       await load()
     } catch (e) {
-      setError(e.message)
+      if (e.code === '23505') {
+        setSkuError('SKU đã tồn tại, vui lòng dùng SKU khác')
+        skuRef.current?.focus()
+      } else {
+        setError(e.message)
+      }
     }
     setSaving(false)
   }
@@ -260,13 +293,23 @@ function ProductsTab() {
           onChange={(e) => setForm({ ...form, name: e.target.value })}
           required
         />
-        <input
-          className={inputClass}
-          placeholder="SKU"
-          value={form.sku}
-          onChange={(e) => setForm({ ...form, sku: e.target.value })}
-          required
-        />
+        <div className="flex flex-col">
+          <input
+            ref={skuRef}
+            className={`${inputClass} ${skuError ? 'border-red-500 focus:ring-red-500' : ''}`}
+            placeholder="SKU"
+            value={form.sku}
+            onChange={(e) => {
+              setForm({ ...form, sku: e.target.value })
+              if (skuError) setSkuError(null)
+            }}
+            onBlur={handleSkuBlur}
+            required
+          />
+          {skuError && (
+            <span className="text-red-600 text-xs mt-0.5">{skuError}</span>
+          )}
+        </div>
         <input
           className={inputClass}
           placeholder="Đơn vị tính"
