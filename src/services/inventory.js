@@ -207,7 +207,10 @@ export async function getTransactions(filters = {}) {
       transaction_id, transaction_date, transaction_type,
       exit_reason_code, entry_reason_code, reference_doc,
       partners:partner_id ( name ),
-      transaction_details ( total_amount, location_from, location_to )
+      transaction_details (
+        total_amount, location_from, location_to,
+        batches:batch_id ( products:product_id ( categories:category_id ( name ) ) )
+      )
     `
   )
 
@@ -243,6 +246,14 @@ export async function getTransactions(filters = {}) {
             0
           )
         : details.reduce((s, d) => s + (Number(d.total_amount) || 0), 0)
+    // Danh sách category (distinct) của các SP trong phiếu — dùng cho báo cáo.
+    const category_names = [
+      ...new Set(
+        details
+          .map((d) => d.batches?.products?.categories?.name)
+          .filter(Boolean)
+      ),
+    ]
     return {
       transaction_id: t.transaction_id,
       transaction_date: t.transaction_date,
@@ -253,6 +264,7 @@ export async function getTransactions(filters = {}) {
       partner_name: t.partners?.name ?? null,
       line_count: details.length,
       total_value,
+      category_names,
     }
   })
 }

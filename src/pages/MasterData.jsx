@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import {
   getProducts,
   createProduct,
@@ -11,9 +11,20 @@ import {
   getLocations,
   createLocation,
   updateLocation,
+  getCategories,
+  getParentCategories,
+  getChildCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+  getProductSuppliers,
+  addProductSupplier,
+  removeProductSupplier,
+  setPrimarySupplier,
 } from '../services/masterData'
 
 const TABS = [
+  { key: 'categories', label: 'Danh mục' },
   { key: 'products', label: 'Sản phẩm' },
   { key: 'partners', label: 'Đối tác' },
   { key: 'locations', label: 'Kho' },
@@ -23,7 +34,7 @@ function MasterData() {
   const [tab, setTab] = useState('products')
 
   return (
-    <div className="max-w-3xl mx-auto p-3 sm:p-6">
+    <div className="max-w-4xl mx-auto p-3 sm:p-6">
       <h2 className="text-xl font-semibold text-gray-900 mb-4">Master Data</h2>
 
       <div className="flex gap-2 border-b border-gray-200 mb-4">
@@ -42,6 +53,7 @@ function MasterData() {
         ))}
       </div>
 
+      {tab === 'categories' && <CategoriesTab />}
       {tab === 'products' && <ProductsTab />}
       {tab === 'partners' && <PartnersTab />}
       {tab === 'locations' && <LocationsTab />}
@@ -53,6 +65,226 @@ const inputClass =
   'border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-500'
 const btnClass =
   'bg-green-600 text-white text-sm font-medium px-4 py-1.5 rounded hover:bg-green-700 disabled:opacity-50'
+
+// ---------- Categories (2 cấp) ----------
+function CategoriesTab() {
+  const [cats, setCats] = useState([])
+  const [products, setProducts] = useState([])
+  const [selectedParent, setSelectedParent] = useState(null)
+  const [error, setError] = useState(null)
+
+  const [parentName, setParentName] = useState('')
+  const [childName, setChildName] = useState('')
+  const [editId, setEditId] = useState(null)
+  const [editName, setEditName] = useState('')
+
+  async function load() {
+    setError(null)
+    try {
+      const [c, p] = await Promise.all([getCategories(), getProducts(false)])
+      setCats(c)
+      setProducts(p)
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+  useEffect(() => {
+    load()
+  }, [])
+
+  const parents = cats.filter((c) => !c.parent_id)
+  const childCount = (id) => cats.filter((c) => c.parent_id === id).length
+  const directProductCount = (id) =>
+    products.filter((p) => p.category_id === id).length
+  const parentProductCount = (id) => {
+    const childIds = cats.filter((c) => c.parent_id === id).map((c) => c.category_id)
+    const ids = new Set([id, ...childIds])
+    return products.filter((p) => ids.has(p.category_id)).length
+  }
+  const children = selectedParent
+    ? cats.filter((c) => c.parent_id === selectedParent.category_id)
+    : []
+
+  async function addParent(e) {
+    e.preventDefault()
+    if (!parentName.trim()) return
+    try {
+      await createCategory({ name: parentName.trim(), parent_id: null })
+      setParentName('')
+      await load()
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+  async function addChild(e) {
+    e.preventDefault()
+    if (!childName.trim() || !selectedParent) return
+    try {
+      await createCategory({
+        name: childName.trim(),
+        parent_id: selectedParent.category_id,
+      })
+      setChildName('')
+      await load()
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+  function startEdit(c) {
+    setEditId(c.category_id)
+    setEditName(c.name)
+    setError(null)
+  }
+  async function saveEdit() {
+    if (!editName.trim()) return
+    try {
+      await updateCategory(editId, { name: editName.trim() })
+      setEditId(null)
+      await load()
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+  async function handleDelete(c) {
+    if (!window.confirm(`Xóa danh mục "${c.name}"?`)) return
+    try {
+      await deleteCategory(c.category_id)
+      if (selectedParent?.category_id === c.category_id) setSelectedParent(null)
+      await load()
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+
+  const editCell = (c, fallback) =>
+    editId === c.category_id ? (
+      <input
+        className={inputClass}
+        value={editName}
+        onChange={(e) => setEditName(e.target.value)}
+      />
+    ) : (
+      fallback
+    )
+  const actionCell = (c) =>
+    editId === c.category_id ? (
+      <>
+        <button onClick={saveEdit} className="text-green-700 text-sm mr-2">💾 Lưu</button>
+        <button onClick={() => setEditId(null)} className="text-gray-500 text-sm">✕ Hủy</button>
+      </>
+    ) : (
+      <>
+        <button onClick={() => startEdit(c)} className="text-gray-600 hover:text-gray-900 text-sm mr-2">✏️ Sửa</button>
+        <button onClick={() => handleDelete(c)} className="text-red-600 hover:text-red-700 text-sm">🗑️ Xóa</button>
+      </>
+    )
+
+  return (
+    <div className="space-y-6">
+      {error && <p className="text-red-600 text-sm">{error}</p>}
+
+      {/* PARENT CATEGORIES */}
+      <div className="space-y-3">
+        <h3 className="font-medium text-gray-800">Nhóm cha</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border border-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="text-left px-3 py-2 font-medium text-gray-600">Tên nhóm</th>
+                <th className="text-right px-3 py-2 font-medium text-gray-600">Số nhóm con</th>
+                <th className="text-right px-3 py-2 font-medium text-gray-600">Số SP</th>
+                <th className="text-left px-3 py-2 font-medium text-gray-600"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {parents.length === 0 ? (
+                <tr><td colSpan={4} className="px-3 py-3 text-center text-gray-400">Chưa có nhóm cha</td></tr>
+              ) : (
+                parents.map((c) => (
+                  <tr key={c.category_id} className="border-t border-gray-100">
+                    <td className="px-3 py-2">
+                      {editCell(
+                        c,
+                        <button
+                          onClick={() => setSelectedParent(c)}
+                          className={`text-left hover:underline ${
+                            selectedParent?.category_id === c.category_id
+                              ? 'text-green-700 font-medium'
+                              : 'text-gray-800'
+                          }`}
+                        >
+                          {c.name}
+                        </button>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-right text-gray-600">{childCount(c.category_id)}</td>
+                    <td className="px-3 py-2 text-right text-gray-600">{parentProductCount(c.category_id)}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">{actionCell(c)}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        <form onSubmit={addParent} className="flex gap-2 items-end">
+          <input
+            className={inputClass}
+            placeholder="Tên nhóm cha"
+            value={parentName}
+            onChange={(e) => setParentName(e.target.value)}
+          />
+          <button className={btnClass}>Thêm</button>
+        </form>
+      </div>
+
+      {/* CHILD CATEGORIES */}
+      {selectedParent && (
+        <div className="space-y-3">
+          <div className="text-sm text-gray-500">
+            <button onClick={() => setSelectedParent(null)} className="hover:underline">
+              Tất cả nhóm
+            </button>
+            {' > '}
+            <span className="text-gray-800 font-medium">{selectedParent.name}</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border border-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">Tên nhóm con</th>
+                  <th className="text-right px-3 py-2 font-medium text-gray-600">Số SP</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {children.length === 0 ? (
+                  <tr><td colSpan={3} className="px-3 py-3 text-center text-gray-400">Chưa có nhóm con</td></tr>
+                ) : (
+                  children.map((c) => (
+                    <tr key={c.category_id} className="border-t border-gray-100">
+                      <td className="px-3 py-2 text-gray-800">{editCell(c, c.name)}</td>
+                      <td className="px-3 py-2 text-right text-gray-600">{directProductCount(c.category_id)}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{actionCell(c)}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          <form onSubmit={addChild} className="flex gap-2 items-end">
+            <input
+              className={inputClass}
+              placeholder={`Tên nhóm con của "${selectedParent.name}"`}
+              value={childName}
+              onChange={(e) => setChildName(e.target.value)}
+            />
+            <button className={btnClass}>Thêm</button>
+          </form>
+        </div>
+      )}
+    </div>
+  )
+}
 
 // ---------- Products ----------
 function ProductsTab() {
@@ -69,6 +301,74 @@ function ProductsTab() {
   const [statusFilter, setStatusFilter] = useState('active') // active | inactive | all
   const [skuError, setSkuError] = useState(null)
   const skuRef = useRef(null)
+
+  // Danh mục + NCC (cho edit mode)
+  const [allCategories, setAllCategories] = useState([])
+  const [parentCats, setParentCats] = useState([])
+  const [supplierPartners, setSupplierPartners] = useState([])
+  const [editCatParent, setEditCatParent] = useState('')
+  const [editCatChild, setEditCatChild] = useState('')
+  const [editChildCats, setEditChildCats] = useState([])
+  const [editSuppliers, setEditSuppliers] = useState([])
+  const [addSupplierId, setAddSupplierId] = useState('')
+  const [addSupplierPrimary, setAddSupplierPrimary] = useState(false)
+
+  useEffect(() => {
+    getCategories().then(setAllCategories).catch(() => {})
+    getParentCategories().then(setParentCats).catch(() => {})
+    getPartners('SUPPLIER').then(setSupplierPartners).catch(() => {})
+  }, [])
+
+  async function onEditParentChange(parentId) {
+    setEditCatParent(parentId)
+    setEditCatChild('')
+    setEditChildCats([])
+    if (parentId) {
+      try {
+        setEditChildCats(await getChildCategories(parentId))
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  async function reloadEditSuppliers(product_id) {
+    try {
+      setEditSuppliers(await getProductSuppliers(product_id))
+    } catch (e) {
+      setError(e.message)
+    }
+    // đồng bộ tên NCC chính ở hàng hiển thị
+    await load()
+  }
+
+  async function handleAddSupplier() {
+    if (!addSupplierId) return
+    try {
+      await addProductSupplier(editId, addSupplierId, addSupplierPrimary)
+      setAddSupplierId('')
+      setAddSupplierPrimary(false)
+      await reloadEditSuppliers(editId)
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+  async function handleSetPrimary(id) {
+    try {
+      await setPrimarySupplier(id, editId)
+      await reloadEditSuppliers(editId)
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+  async function handleRemoveSupplier(id) {
+    try {
+      await removeProductSupplier(id)
+      await reloadEditSuppliers(editId)
+    } catch (e) {
+      setError(e.message)
+    }
+  }
 
   async function handleSkuBlur() {
     const value = form.sku.trim()
@@ -143,11 +443,33 @@ function ProductsTab() {
     })
     setEditSkuError(null)
     setError(null)
+
+    // Prefill cascade danh mục từ category_id của SP
+    const cat = allCategories.find((c) => c.category_id === r.category_id)
+    let parent = '',
+      child = ''
+    if (cat) {
+      if (cat.parent_id) {
+        parent = cat.parent_id
+        child = cat.category_id
+      } else {
+        parent = cat.category_id
+      }
+    }
+    setEditCatParent(parent)
+    setEditCatChild(child)
+    if (parent) getChildCategories(parent).then(setEditChildCats).catch(() => {})
+    else setEditChildCats([])
+
+    getProductSuppliers(r.product_id).then(setEditSuppliers).catch(() => {})
+    setAddSupplierId('')
+    setAddSupplierPrimary(false)
   }
   function cancelEdit() {
     setEditId(null)
     setEditForm(null)
     setEditSkuError(null)
+    setEditSuppliers([])
   }
   function setEf(field, value) {
     setEditForm((f) => ({ ...f, [field]: value }))
@@ -169,22 +491,22 @@ function ProductsTab() {
       // bỏ qua lỗi kiểm tra, để DB bắt 23505
     }
     try {
-      const updated = await updateProduct(editId, {
+      await updateProduct(editId, {
         ...editForm,
         conversion_factor: editForm.conversion_factor
           ? Number(editForm.conversion_factor)
           : undefined,
+        category_id: editCatChild || editCatParent || null,
       })
-      setRows((prev) =>
-        prev.map((r) => (r.product_id === editId ? { ...r, ...updated } : r))
-      )
       cancelEdit()
+      await load() // tải lại để cập nhật category_path + NCC chính
     } catch (e) {
       if (e.code === '23505') {
         setEditSkuError('SKU đã tồn tại, vui lòng dùng SKU khác')
       } else {
         setError(e.message)
       }
+      return
     }
   }
 
@@ -256,6 +578,8 @@ function ProductsTab() {
               <th className="text-left px-3 py-2 font-medium text-gray-600">SKU</th>
               <th className="text-left px-3 py-2 font-medium text-gray-600">ĐVT</th>
               <th className="text-left px-3 py-2 font-medium text-gray-600">Đơn vị đóng gói</th>
+              <th className="text-left px-3 py-2 font-medium text-gray-600">Danh mục</th>
+              <th className="text-left px-3 py-2 font-medium text-gray-600">NCC chính</th>
               <th className="text-left px-3 py-2 font-medium text-gray-600">Trạng thái</th>
               <th className="text-left px-3 py-2 font-medium text-gray-600"></th>
             </tr>
@@ -263,7 +587,7 @@ function ProductsTab() {
           <tbody>
             {visibleRows.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-3 py-3 text-center text-gray-400">
+                <td colSpan={8} className="px-3 py-3 text-center text-gray-400">
                   Chưa có dữ liệu
                 </td>
               </tr>
@@ -273,7 +597,8 @@ function ProductsTab() {
                 const editing = editId === r.product_id
                 if (editing) {
                   return (
-                    <tr key={r.product_id} className="border-t border-gray-100 bg-green-50/40">
+                    <Fragment key={r.product_id}>
+                    <tr className="border-t border-gray-100 bg-green-50/40">
                       <td className="px-3 py-2">
                         <input
                           className={inputClass}
@@ -318,6 +643,8 @@ function ProductsTab() {
                           )}
                         </div>
                       </td>
+                      <td className="px-3 py-2 text-gray-400 text-xs">↓ bên dưới</td>
+                      <td className="px-3 py-2 text-gray-400 text-xs">↓ bên dưới</td>
                       <td className="px-3 py-2 text-gray-400 text-xs">—</td>
                       <td className="px-3 py-2 whitespace-nowrap">
                         <button
@@ -336,6 +663,115 @@ function ProductsTab() {
                         </button>
                       </td>
                     </tr>
+                    <tr className="bg-green-50/40">
+                      <td colSpan={8} className="px-3 pb-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Danh mục cascade */}
+                          <div>
+                            <div className="text-sm font-medium text-gray-700 mb-1">Danh mục</div>
+                            <div className="flex flex-col sm:flex-row gap-2">
+                              <select
+                                className={inputClass}
+                                value={editCatParent}
+                                onChange={(e) => onEditParentChange(e.target.value)}
+                              >
+                                <option value="">-- Nhóm cha --</option>
+                                {parentCats.map((c) => (
+                                  <option key={c.category_id} value={c.category_id}>
+                                    {c.name}
+                                  </option>
+                                ))}
+                              </select>
+                              <select
+                                className={`${inputClass} disabled:bg-gray-100 disabled:text-gray-400`}
+                                value={editCatChild}
+                                disabled={!editCatParent}
+                                onChange={(e) => setEditCatChild(e.target.value)}
+                              >
+                                <option value="">-- Nhóm con --</option>
+                                {editChildCats.map((c) => (
+                                  <option key={c.category_id} value={c.category_id}>
+                                    {c.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Quản lý NCC */}
+                          <div>
+                            <div className="text-sm font-medium text-gray-700 mb-1">Nhà cung cấp</div>
+                            <ul className="space-y-1 mb-2">
+                              {editSuppliers.length === 0 && (
+                                <li className="text-xs text-gray-400">Chưa có NCC</li>
+                              )}
+                              {editSuppliers.map((s) => (
+                                <li key={s.id} className="flex items-center gap-2 text-sm">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSetPrimary(s.id)}
+                                    className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                      s.is_primary
+                                        ? 'bg-green-100 text-green-700'
+                                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                                    }`}
+                                    title="Đặt làm NCC chính"
+                                  >
+                                    {s.is_primary ? '★ Chính' : '☆ Phụ'}
+                                  </button>
+                                  <span className="text-gray-700">{s.partner_name}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveSupplier(s.id)}
+                                    className="text-red-500 hover:text-red-700 text-xs ml-auto"
+                                  >
+                                    ✕
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <select
+                                className={inputClass}
+                                value={addSupplierId}
+                                onChange={(e) => setAddSupplierId(e.target.value)}
+                              >
+                                <option value="">-- Chọn NCC --</option>
+                                {supplierPartners
+                                  .filter(
+                                    (p) =>
+                                      !editSuppliers.some(
+                                        (s) => s.partner_id === p.partner_id
+                                      )
+                                  )
+                                  .map((p) => (
+                                    <option key={p.partner_id} value={p.partner_id}>
+                                      {p.name}
+                                    </option>
+                                  ))}
+                              </select>
+                              <label className="flex items-center gap-1 text-xs text-gray-600">
+                                <input
+                                  type="checkbox"
+                                  checked={addSupplierPrimary}
+                                  onChange={(e) => setAddSupplierPrimary(e.target.checked)}
+                                />
+                                NCC chính
+                              </label>
+                              <button
+                                type="button"
+                                onClick={handleAddSupplier}
+                                disabled={!addSupplierId}
+                                className="bg-gray-700 text-white text-xs font-medium px-3 py-1 rounded hover:bg-gray-800 disabled:opacity-50"
+                              >
+                                Thêm NCC
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                    </Fragment>
                   )
                 }
                 return (
@@ -346,6 +782,8 @@ function ProductsTab() {
                     <td className="px-3 py-2 text-gray-600">
                       {r.pack_unit ? `${r.pack_unit}/${r.conversion_factor ?? 1}` : '—'}
                     </td>
+                    <td className="px-3 py-2 text-gray-600">{r.category_path || '—'}</td>
+                    <td className="px-3 py-2 text-gray-600">{r.primary_supplier_name || '—'}</td>
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2">
                         <button
