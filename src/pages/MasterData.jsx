@@ -207,12 +207,16 @@ function CategoriesTab() {
                         c,
                         <button
                           onClick={() => setSelectedParent(c)}
-                          className={`text-left hover:underline ${
+                          title="Click để xem nhóm con"
+                          className={`flex items-center gap-1 text-left cursor-pointer hover:underline ${
                             selectedParent?.category_id === c.category_id
-                              ? 'text-green-700 font-medium'
-                              : 'text-gray-800'
+                              ? 'text-blue-700 font-medium'
+                              : 'text-blue-600'
                           }`}
                         >
+                          <span className="text-xs">
+                            {selectedParent?.category_id === c.category_id ? '▼' : '▶'}
+                          </span>
                           {c.name}
                         </button>
                       )}
