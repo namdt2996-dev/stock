@@ -66,6 +66,14 @@ const inputClass =
 const btnClass =
   'bg-green-600 text-white text-sm font-medium px-4 py-1.5 rounded hover:bg-green-700 disabled:opacity-50'
 
+const PARTNER_TYPES = [
+  { value: 'SUPPLIER', label: 'Nhà cung cấp' },
+  { value: 'CUSTOMER', label: 'Khách hàng' },
+  { value: 'BOTH', label: 'Vừa NCC vừa KH' },
+]
+const partnerTypeLabel = (t) =>
+  PARTNER_TYPES.find((o) => o.value === t)?.label || t
+
 // ---------- Categories (2 cấp) ----------
 function CategoriesTab() {
   const [cats, setCats] = useState([])
@@ -988,8 +996,11 @@ function PartnersTab() {
                           setEditForm((f) => ({ ...f, type: e.target.value }))
                         }
                       >
-                        <option value="SUPPLIER">SUPPLIER</option>
-                        <option value="CUSTOMER">CUSTOMER</option>
+                        {PARTNER_TYPES.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
                       </select>
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
@@ -1012,7 +1023,7 @@ function PartnersTab() {
                 ) : (
                   <tr key={r.partner_id} className="border-t border-gray-100">
                     <td className="px-3 py-2 text-gray-800">{r.name}</td>
-                    <td className="px-3 py-2 text-gray-600">{r.type}</td>
+                    <td className="px-3 py-2 text-gray-600">{partnerTypeLabel(r.type)}</td>
                     <td className="px-3 py-2">
                       <button
                         type="button"
@@ -1042,8 +1053,11 @@ function PartnersTab() {
           value={form.type}
           onChange={(e) => setForm({ ...form, type: e.target.value })}
         >
-          <option value="SUPPLIER">SUPPLIER</option>
-          <option value="CUSTOMER">CUSTOMER</option>
+          {PARTNER_TYPES.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
         </select>
         <button className={btnClass} disabled={saving}>
           {saving ? 'Đang lưu…' : 'Thêm'}

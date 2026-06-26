@@ -103,9 +103,12 @@ export async function updateProduct(
 }
 
 // ---------- Partners ----------
+// type = 'SUPPLIER' -> NCC + BOTH; 'CUSTOMER' -> KH + BOTH; null/undefined -> tất cả.
 export async function getPartners(type) {
   let query = supabase.from('partners').select('*').order('name', { ascending: true })
-  if (type) query = query.eq('type', type)
+  if (type === 'SUPPLIER') query = query.in('type', ['SUPPLIER', 'BOTH'])
+  else if (type === 'CUSTOMER') query = query.in('type', ['CUSTOMER', 'BOTH'])
+  else if (type) query = query.eq('type', type)
   const { data, error } = await query
   if (error) throw error
   return data ?? []

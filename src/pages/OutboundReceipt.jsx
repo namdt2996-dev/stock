@@ -57,7 +57,10 @@ function OutboundReceipt() {
   useEffect(() => {
     async function loadRefs() {
       try {
-        const [pa, lo] = await Promise.all([getPartners(), getLocations()])
+        const [pa, lo] = await Promise.all([
+          getPartners('CUSTOMER'),
+          getLocations(),
+        ])
         setPartners(pa)
         setLocations(lo)
       } catch (e) {
